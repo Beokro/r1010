@@ -31,8 +31,10 @@ class TcpServer( object ):
         recvSize = 15
 
         # send my currentSize and graph to the clinet to start the computation
+        self.lock.acquire()
         client.send( str( self.currentSize ) )
         client.send( self.currentGraph )
+        self.lock.release()
 
         while True:
             try:
@@ -52,23 +54,29 @@ class TcpServer( object ):
         newCliqueSize = int( data )
         message = ''
 
+        self.lock.acquire()
         if newCliqueSize < self.cliqueSize:
             # request the matrix from the client
             client.send( requestMessage )
             graph = client.recv( recvSize )
-            if not self.validGraph:
+            if not self.validGraph( graph ):
                 # errored formated graph received from client
                 client.send( errorMessage )
+                self.lock.release()
                 return
             self.currentGraph = graph
         else:
             # deny the matrix, not need to send if it is worse than current one
             # instead server will send its graph to client
             client.send( denyMessage )
+            client.send( self.cliqueSize )
             client.send( self.currentGraph )
+        self.lock.release()
 
 
     def validGraph( self, graph ):
+        # don't need to lock here, if size has been changed
+        # no need to process the request from client anyway
         if len( graph ) != self.currentSize * self.currentSize:
             print 'graph received from client has wrong length'
             print graph
