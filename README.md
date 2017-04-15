@@ -22,9 +22,15 @@ caseA: Client and Server has the same problem size
 caseA_0: client's clique size is 0:
 * Server -> Request message
 * Client -> answer graph
+
+caseA_0.1: graph is valid
 * Server increment the problem size, reset the clique size and graph
 * Server -> ProblemSize changed message
 * Server -> new problem size
+* Server -> tranmission complete message
+
+caseA_0.2: graph is invalid
+* Server -> error message
 
 
 caseA_1: client has smaller number
@@ -33,6 +39,7 @@ caseA_1: client has smaller number
 
 caseA_1.1: received graph is valid
 * Server keep the graph
+* Server -> tranmission complete message
 
 caseA_1.2: received graph is invalid
 * Server -> error message
