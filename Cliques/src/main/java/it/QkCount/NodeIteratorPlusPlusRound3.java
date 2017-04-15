@@ -11,12 +11,12 @@
  *  					
 */
 
-package it.uniroma1.di.fff.QkCount;
+package it.QkCount;
 
 
-import it.uniroma1.di.fff.Util.Checker;
-import it.uniroma1.di.fff.Util.CpuTimeLogger;
-import it.uniroma1.di.fff.Util.DoubleChecker;
+import it.Util.Checker;
+import it.Util.CpuTimeLogger;
+import it.Util.DoubleChecker;
 
 import java.io.IOException;
 import java.util.ArrayList;

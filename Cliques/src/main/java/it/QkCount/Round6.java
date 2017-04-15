@@ -5,7 +5,7 @@
  *  Authors:			(c) 2014 Irene Finocchi, Marco Finocchi, Emanuele G. Fusco
  *  Description:		summing up partial counts
  *  					
-*/package it.uniroma1.di.fff.QkCount;
+*/package it.QkCount;
 
 
 import java.io.IOException;

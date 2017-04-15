@@ -7,9 +7,9 @@
  *  					
  */
 
-package it.uniroma1.di.fff.Util;
+package it.Util;
 
-import it.uniroma1.di.fff.QkCount.QkCountDriver;
+import it.QkCount.QkCountDriver;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;

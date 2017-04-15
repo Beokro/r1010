@@ -8,13 +8,13 @@
  */
 
 
-package it.uniroma1.di.fff.QkCount;
+package it.QkCount;
 
 
-import it.uniroma1.di.fff.Util.AdjListGraph;
-import it.uniroma1.di.fff.Util.CliqueCounterGraph;
-import it.uniroma1.di.fff.Util.CpuTimeLogger;
-import it.uniroma1.di.fff.Util.LPlusNGraph;
+import it.Util.AdjListGraph;
+import it.Util.CliqueCounterGraph;
+import it.Util.CpuTimeLogger;
+import it.Util.LPlusNGraph;
 
 import java.io.IOException;
 import java.util.Iterator;

@@ -2,7 +2,7 @@ package it.uniroma1.di.fff.test;
 
 import org.apache.hadoop.io.Text;
 
-import it.uniroma1.di.fff.QkCount.URound1.Map;
+import it.QkCount.URound1.Map;
 
 public class URound1TestMapper {
 

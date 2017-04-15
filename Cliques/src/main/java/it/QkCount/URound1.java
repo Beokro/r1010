@@ -1,5 +1,5 @@
-package it.uniroma1.di.fff.QkCount;
-import it.uniroma1.di.fff.Util.LPlusNGraphWithBuckets;
+package it.QkCount;
+import it.Util.LPlusNGraphWithBuckets;
 
 import java.io.IOException;
 import java.util.regex.Pattern;

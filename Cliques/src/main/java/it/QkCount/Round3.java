@@ -7,10 +7,10 @@
  *  					
 */
 
-package it.uniroma1.di.fff.QkCount;
+package it.QkCount;
 
 
-import it.uniroma1.di.fff.Util.CpuTimeLogger;
+import it.Util.CpuTimeLogger;
 
 import java.io.IOException;
 import java.util.Iterator;

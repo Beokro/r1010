@@ -7,9 +7,9 @@
  *  					
  */
 
-package it.uniroma1.di.fff.Util;
+package it.Util;
 
-import it.uniroma1.di.fff.QkCount.QkCountDriver;
+import it.QkCount.QkCountDriver;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;

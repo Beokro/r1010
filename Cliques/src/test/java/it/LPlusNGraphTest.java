@@ -1,6 +1,6 @@
 package it.uniroma1.di.fff.test;
 
-import it.uniroma1.di.fff.Util.LPlusNGraph;
+import it.Util.LPlusNGraph;
 
 import java.io.BufferedReader;
 import java.io.FileReader;

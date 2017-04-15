@@ -6,18 +6,18 @@
  *  Description:		Main class
 */
 
-package it.uniroma1.di.fff.QkCount;
+package it.QkCount;
 
 
 
 
 
-import it.uniroma1.di.fff.Util.AbstractCommand;
-import it.uniroma1.di.fff.Util.ClockTimeLogger;
-import it.uniroma1.di.fff.Util.CommandComputeDegrees;
-import it.uniroma1.di.fff.Util.CommandCountByJoin;
-import it.uniroma1.di.fff.Util.CommandCountCliques;
-import it.uniroma1.di.fff.Util.CommandCountTriangles;
+import it.Util.AbstractCommand;
+import it.Util.ClockTimeLogger;
+import it.Util.CommandComputeDegrees;
+import it.Util.CommandCountByJoin;
+import it.Util.CommandCountCliques;
+import it.Util.CommandCountTriangles;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;

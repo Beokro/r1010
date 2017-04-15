@@ -6,7 +6,7 @@
  *  Description:		Abstract class for common configurations of mappers and reducers
 */
 
-package it.uniroma1.di.fff.QkCount;
+package it.QkCount;
 
 
 import java.io.IOException;
