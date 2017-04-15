@@ -38,7 +38,8 @@ public class Round6 extends AbstractRound implements Tool {
 
 		@Override
 		public void map(Text key,Text value, Context context) throws IOException, InterruptedException {
-			context.write(new Text ("TotCliques"), value);
+			//context.write(new Text ("TotCliques"), value);
+			context.write(key, value);
 
 		}
 	}
@@ -88,11 +89,11 @@ public class Round6 extends AbstractRound implements Tool {
 
 					outKey = "C "+ N_COLORS + " " + CLIQUE_SIZE;
 				} else {
-					outKey = key.toString() + "- " + CLIQUE_SIZE;
+					outKey = "Node:" + key.toString();
 				}
 			}
 			
-			context.write(new Text (outKey), new Text(Long.toString(totCliques/*+partialCount*/)));
+			context.write(new Text (outKey), new Text("Cliques:" + Long.toString(totCliques/*+partialCount*/)));
 
 		}
 	}

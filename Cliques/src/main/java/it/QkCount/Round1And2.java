@@ -94,8 +94,9 @@ public class Round1And2 extends AbstractRound implements Tool {
 			ArrayList<String> storage = new ArrayList<String>();
 
 			Iterator<Text> it = values.iterator();
-			while(it.hasNext())
+			while(it.hasNext()) {
 				storage.add((it.next()).toString());
+            }
 
 
 			String keyStr=key.toString();
