@@ -66,6 +66,7 @@ public class Round4 extends AbstractRound implements Tool {
 
 		srcPair = Checker.splitNodeAndDegree(key.toString());
 		dstPair = Checker.splitNodeAndDegree(value.toString());
+        System.err.println(key.toString() + " haha " + value.toString());
 
 		//String src,dst;
 		//int srcDegree,dstDegree;
@@ -180,6 +181,7 @@ public class Round4 extends AbstractRound implements Tool {
 				}
 
 			} else {
+                System.err.println("yosh");
 				//Input of type <u:d(u), v:d(v)>.
 
 				Round4.commonMapFragment(key, value, context);
