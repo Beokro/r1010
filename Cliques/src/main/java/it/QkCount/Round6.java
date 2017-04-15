@@ -88,7 +88,7 @@ public class Round6 extends AbstractRound implements Tool {
 
 					outKey = "C "+ N_COLORS + " " + CLIQUE_SIZE;
 				} else {
-					outKey = "X "+ "- " + CLIQUE_SIZE;
+					outKey = key.toString() + "- " + CLIQUE_SIZE;
 				}
 			}
 			
