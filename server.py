@@ -31,7 +31,9 @@ class TcpServer( object ):
             client, address = self.sock.accept()
             # need to be more careful about the timeout
             # client.settimeout( 60 )
-            threading.Thread( target = self.handleClient, args = ( client, address ) ).start()
+            t = threading.Thread( target = self.handleClient, args = ( client, address ) )
+            t.daemon = True
+            t.start()
 
     def handleClient( self, client, address ):
         recvSize = 15
@@ -78,12 +80,9 @@ class TcpServer( object ):
         # case B
         if clientProblemSize != self.currentSize:
             self.handleDifferentProblemSize( client )
-        # case A_0
-        elif clientCliqueSize == 0:
-            self.requestAndHandleNewGraph( client, True )
-        # case A_1
+        # case A_1, A_0
         elif clientCliqueSize < self.cliqueSize:
-            self.requestAndHandleNewGraph( client, False )
+            self.requestAndHandleNewGraph( client, clientCliqueSize )
         # case A_2
         else:
             self.denyNewGraph( client )
@@ -97,7 +96,7 @@ class TcpServer( object ):
         client.send( restartMessage )
         return
 
-    def requestAndHandleNewGraph( self, client, iszero ):
+    def requestAndHandleNewGraph( self, client, clientCliqueSize ):
         global requestMessage
         global errorMessage
         global tranmissionCompleteMessage
@@ -114,9 +113,10 @@ class TcpServer( object ):
 
         # case A_0.1 && case A_1.1, keep the graph
         self.currentGraph = graph
+        self.cliqueSize = clientCliqueSize
 
         # case A_0.1, increment the problem size
-        if iszero:
+        if clientCliqueSize == 0:
             self.currentSize += 1
             self.currentGraph = ' '
             self.cliqueSize = sys.maxsize
@@ -130,8 +130,8 @@ class TcpServer( object ):
         # instead server will send its graph to client
         global denyMessage
         client.send( denyMessage )
-        client.send( self.cliqueSize )
-        client.send( self.currentGraph )
+        client.send( str( self.cliqueSize ) )
+        client.send( str( self.currentGraph ) )
 
     def validGraph( self, graph ):
         # don't need to lock here, if size has been changed
@@ -151,11 +151,17 @@ class TcpServer( object ):
     def handleDifferentProblemSize( self, client ):
         global problemSizeChangedMessage
         client.send( problemSizeChangedMessage )
-        client.send( self.currentSize )
-        client.send( self.currentGraph )
+        client.send( str( self.currentSize ) )
+        client.send( str( self.currentGraph ) )
         return
 
 
 if __name__ == "__main__":
-    port_num = input("Port? ")
-    TcpServer('',port_num, 5).listen()
+    port_num = 7788
+    try:
+        temp = TcpServer('', port_num, 5)
+        temp.listen()
+    except KeyboardInterrupt:
+        print '^C received, shutting down the web server'
+        temp.sock.close()
+        exit()
