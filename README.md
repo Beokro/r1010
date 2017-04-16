@@ -27,6 +27,7 @@ caseA_0.1: graph is valid
 * Server increment the problem size, reset the clique size and graph
 * Server -> ProblemSize changed message
 * Server -> new problem size
+* Server -> current grpah
 * Server -> tranmission complete message
 
 caseA_0.2: graph is invalid
@@ -55,3 +56,4 @@ caseA_2: server has smaller number
 caseB: Client and Server has different problem size
 * Server -> ProblemSize changed message
 * Server -> new problem size
+* Server -> current graph

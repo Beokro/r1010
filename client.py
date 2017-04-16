@@ -88,7 +88,7 @@ class TcpClient():
             print 'somehow graph is corrupted'
         # case A_0.1
         elif message == problemSizeChangedMessage:
-            self.currentSize = int( server.recv( 20 ) )
+            self.handleProblemSizeChanged()
             message = server.recv( 20 )
             if message != tranmissionCompleteMessage:
                 print "exchange with server end with unexpect " + message
@@ -102,5 +102,9 @@ class TcpClient():
         else:
             print "repsone from server is unexpected: " + message
         return
+
+    def handleProblemSizeChanged( self ):
+        self.currentSize = int( server.recv( 20 ) )
+        self.currentGraph = server.recv( self.currentSize * self.currentSize + 10 )
 
 

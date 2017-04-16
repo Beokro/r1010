@@ -152,6 +152,7 @@ class TcpServer( object ):
         global problemSizeChangedMessage
         client.send( problemSizeChangedMessage )
         client.send( self.currentSize )
+        client.send( self.currentGraph )
         return
 
 
