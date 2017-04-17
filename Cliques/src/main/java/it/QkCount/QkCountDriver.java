@@ -132,6 +132,149 @@ public class QkCountDriver {
 		return conf.get(QkCountDriver.WORKING_DIR_CONF_KEY) + fileName;
 	}
 	
+    public static void countCliques(Configuration conf, 
+                                    CommandCountCliques cCountCliques,
+                                    FileSystem fs,
+                                    ClockTimeLogger ctlOverall) throws Exception{
+
+        //ROUND 1 and 2 are for computing nodes degrees
+        //ROUND 1
+        
+        //Setting the round number is MANDATORY (wrong behaviour if not set to 1!!!)
+        int res = 0;
+        conf.setInt(ROUND_NUMBER_CONF_KEY,1);
+        conf.set(ROUND_JOB_NAME_CONF_KEY, "Round1");
+        //QkCountDriver.setCommonArgs(conf, cComputeDegrees);
+        QkCountDriver.setCommonArgs(conf, cCountCliques);
+        
+        
+        AbstractRound round;
+        round = new Round1And2();
+
+        ClockTimeLogger ctl;
+        ctl = new ClockTimeLogger(cCountCliques.getFileOut() + " 1 G", "-");
+        
+        res = ToolRunner.run(conf, round, new String[]{
+                    QkCountDriver.buildIoPath(conf, cCountCliques.getFileIn()),
+                    QkCountDriver.buildPath(conf,OUT1)
+                });
+        ctl.logClockTime();
+
+
+        //ROUND 2
+        
+        //Setting the round number is MANDATORY (wrong behaviour if not set to 2!!!)
+        conf.setInt(ROUND_NUMBER_CONF_KEY,2);
+        conf.set(ROUND_JOB_NAME_CONF_KEY, "Round2");
+
+        round = new Round1And2();
+
+        ctl = new ClockTimeLogger(cCountCliques.getFileOut() + " 2 G", "-");
+        
+        res = ToolRunner.run(conf, round, new String[]{
+                QkCountDriver.buildPath(conf,OUT1), 
+                QkCountDriver.buildPath(conf,OUT2), 
+                //QkCountDriver.buildIoPath(conf, cComputeDegrees.getFileOut())
+        }) + res;
+        ctl.logClockTime();
+        
+        QkCountDriver.delete(conf, fs, OUT1, true);
+
+        //setup for ROUND 3 and after
+        conf.setInt(CLIQUE_SIZE_CONF_KEY, cCountCliques.getCliqueSize());
+        conf.setBoolean(USE_L_PLUS_N_CONF_KEY, cCountCliques.getUseLPlusN());
+
+        System.err.println("Counting cliques of size " + conf.getInt(CLIQUE_SIZE_CONF_KEY, -1));
+
+        conf.setInt(QkCountDriver.COLOR_SAMPLING_COLORS_CONF_KEY, cCountCliques.getColorSampleColors());
+        conf.setDouble(QkCountDriver.EDGE_SAMPLING_PROBABILITY_CONF_KEY, cCountCliques.getEdgeSamplingProbability());
+        
+        String outFile = QkCountDriver.buildIoPath(
+                conf,cCountCliques.getFileOut() + 
+                "-" + cCountCliques.getCliqueSize()
+        );
+        //QkCountDriver.setCommonArgs(conf, cCountCliques);
+
+        
+        if(cCountCliques.getEdgeSamplingProbability()>0) {
+            outFile = outFile + "-E"+cCountCliques.getEdgeSamplingProbability();
+        }
+        if(cCountCliques.getColorSampleColors()>0) {
+            outFile = outFile + "-C"+cCountCliques.getColorSampleColors();
+        }
+        
+        //ROUND 3 - creating Gamma+ neighborhoods (filtering out neighbors of small degree)
+        conf.setInt(ROUND_NUMBER_CONF_KEY,3);
+        conf.set(ROUND_JOB_NAME_CONF_KEY, "Round3");
+
+
+        round = new Round3();
+
+        ctl = new ClockTimeLogger("3 G", "-");
+
+        res = ToolRunner.run(conf, round, new String[]{
+                QkCountDriver.buildPath(conf,OUT2), 
+                //QkCountDriver.buildIoPath(conf,cCountCliques.getFileIn()), 
+                QkCountDriver.buildPath(conf,OUT3)}) + res;
+        ctl.logClockTime();
+
+
+        //ROUND 4 - small-neighborhoods intersection
+        conf.setInt(ROUND_NUMBER_CONF_KEY,4);
+        conf.set(ROUND_JOB_NAME_CONF_KEY, "Round4");
+
+
+        round = new Round4();
+
+        ctl = new ClockTimeLogger("4 G", "-");
+        //TODO: associate two distinct mappers to the distinct input sources!
+        res = ToolRunner.run(conf, round, new String[]{
+                //QkCountDriver.buildIoPath(conf,cCountCliques.getFileIn()),
+                QkCountDriver.buildPath(conf,OUT2),
+                QkCountDriver.buildPath(conf,OUT3),
+                QkCountDriver.buildPath(conf,OUT4)}) + res;
+        ctl.logClockTime();
+
+        QkCountDriver.delete(conf, fs, OUT2, true);
+        QkCountDriver.delete(conf, fs, OUT3, true);
+
+        
+        //ROUND 5 - counting!
+    
+        conf.setInt(ROUND_NUMBER_CONF_KEY,5);
+        conf.set(ROUND_JOB_NAME_CONF_KEY, "Round5");
+        
+        round = new Round5();
+        
+
+        ctl = new ClockTimeLogger("5 G", "-");
+
+        res = ToolRunner.run(conf, round, new String[]{
+                QkCountDriver.buildPath(conf,OUT4),
+                QkCountDriver.buildPath(conf,OUT5)}) + res;
+        ctl.logClockTime();
+        
+        QkCountDriver.delete(conf, fs, OUT4, true);
+
+
+        //ROUND 6 - summing up!
+        conf.setInt(ROUND_NUMBER_CONF_KEY,6);
+        conf.set(ROUND_JOB_NAME_CONF_KEY, "Round6");
+
+
+        round = new Round6();
+
+        res = ToolRunner.run(conf, round, new String[]{
+                    QkCountDriver.buildPath(conf,OUT5), 
+                    outFile
+                }) 
+                + res;
+
+        QkCountDriver.delete(conf, fs, OUT5, true);
+
+        ctlOverall.logClockTime();
+
+    }
 
 	public static void main(String[] args) throws Exception {
 
@@ -209,139 +352,7 @@ public class QkCountDriver {
             }
             else if(command.equals(COMMAND_COUNT_CLIQUES)) {
 
-				//ROUND 1 and 2 are for computing nodes degrees
-				//ROUND 1
-				
-				//Setting the round number is MANDATORY (wrong behaviour if not set to 1!!!)
-				conf.setInt(ROUND_NUMBER_CONF_KEY,1);
-				conf.set(ROUND_JOB_NAME_CONF_KEY, "Round1");
-				//QkCountDriver.setCommonArgs(conf, cComputeDegrees);
-				QkCountDriver.setCommonArgs(conf, cCountCliques);
-				
-				
-				round = new Round1And2();
-
-				ctl = new ClockTimeLogger(cCountCliques.getFileOut() + " 1 G", "-");
-				
-				res = ToolRunner.run(conf, round, new String[]{
-							QkCountDriver.buildIoPath(conf, cCountCliques.getFileIn()),
-							QkCountDriver.buildPath(conf,OUT1)
-						});
-				ctl.logClockTime();
-
-
-				//ROUND 2
-				
-				//Setting the round number is MANDATORY (wrong behaviour if not set to 2!!!)
-				conf.setInt(ROUND_NUMBER_CONF_KEY,2);
-				conf.set(ROUND_JOB_NAME_CONF_KEY, "Round2");
-
-				round = new Round1And2();
-
-				ctl = new ClockTimeLogger(cCountCliques.getFileOut() + " 2 G", "-");
-				
-				res = ToolRunner.run(conf, round, new String[]{
-						QkCountDriver.buildPath(conf,OUT1), 
-						QkCountDriver.buildPath(conf,OUT2), 
-						//QkCountDriver.buildIoPath(conf, cComputeDegrees.getFileOut())
-				}) + res;
-				ctl.logClockTime();
-				
-				QkCountDriver.delete(conf, fs, OUT1, true);
-
-				//setup for ROUND 3 and after
-				conf.setInt(CLIQUE_SIZE_CONF_KEY, cCountCliques.getCliqueSize());
-				conf.setBoolean(USE_L_PLUS_N_CONF_KEY, cCountCliques.getUseLPlusN());
-
-				System.err.println("Counting cliques of size " + conf.getInt(CLIQUE_SIZE_CONF_KEY, -1));
-
-				conf.setInt(QkCountDriver.COLOR_SAMPLING_COLORS_CONF_KEY, cCountCliques.getColorSampleColors());
-				conf.setDouble(QkCountDriver.EDGE_SAMPLING_PROBABILITY_CONF_KEY, cCountCliques.getEdgeSamplingProbability());
-				
-				String outFile = QkCountDriver.buildIoPath(
-						conf,cCountCliques.getFileOut() + 
-						"-" + cCountCliques.getCliqueSize()
-				);
-				//QkCountDriver.setCommonArgs(conf, cCountCliques);
-
-				
-				if(cCountCliques.getEdgeSamplingProbability()>0) {
-					outFile = outFile + "-E"+cCountCliques.getEdgeSamplingProbability();
-				}
-				if(cCountCliques.getColorSampleColors()>0) {
-					outFile = outFile + "-C"+cCountCliques.getColorSampleColors();
-				}
-				
-				//ROUND 3 - creating Gamma+ neighborhoods (filtering out neighbors of small degree)
-				conf.setInt(ROUND_NUMBER_CONF_KEY,3);
-				conf.set(ROUND_JOB_NAME_CONF_KEY, "Round3");
-
-
-				round = new Round3();
-
-				ctl = new ClockTimeLogger("3 G", "-");
-
-				res = ToolRunner.run(conf, round, new String[]{
-						QkCountDriver.buildPath(conf,OUT2), 
-						//QkCountDriver.buildIoPath(conf,cCountCliques.getFileIn()), 
-						QkCountDriver.buildPath(conf,OUT3)}) + res;
-				ctl.logClockTime();
-
-
-				//ROUND 4 - small-neighborhoods intersection
-				conf.setInt(ROUND_NUMBER_CONF_KEY,4);
-				conf.set(ROUND_JOB_NAME_CONF_KEY, "Round4");
-
-
-				round = new Round4();
-
-				ctl = new ClockTimeLogger("4 G", "-");
-				//TODO: associate two distinct mappers to the distinct input sources!
-				res = ToolRunner.run(conf, round, new String[]{
-						//QkCountDriver.buildIoPath(conf,cCountCliques.getFileIn()),
-						QkCountDriver.buildPath(conf,OUT2),
-						QkCountDriver.buildPath(conf,OUT3),
-						QkCountDriver.buildPath(conf,OUT4)}) + res;
-				ctl.logClockTime();
-
-				QkCountDriver.delete(conf, fs, OUT2, true);
-				QkCountDriver.delete(conf, fs, OUT3, true);
-
-				
-				//ROUND 5 - counting!
-			
-				conf.setInt(ROUND_NUMBER_CONF_KEY,5);
-				conf.set(ROUND_JOB_NAME_CONF_KEY, "Round5");
-				
-				round = new Round5();
-				
-
-				ctl = new ClockTimeLogger("5 G", "-");
-
-				res = ToolRunner.run(conf, round, new String[]{
-						QkCountDriver.buildPath(conf,OUT4),
-						QkCountDriver.buildPath(conf,OUT5)}) + res;
-				ctl.logClockTime();
-				
-				QkCountDriver.delete(conf, fs, OUT4, true);
-
-
-				//ROUND 6 - summing up!
-				conf.setInt(ROUND_NUMBER_CONF_KEY,6);
-				conf.set(ROUND_JOB_NAME_CONF_KEY, "Round6");
-
-
-				round = new Round6();
-
-				res = ToolRunner.run(conf, round, new String[]{
-							QkCountDriver.buildPath(conf,OUT5), 
-							outFile
-						}) 
-						+ res;
-
-				QkCountDriver.delete(conf, fs, OUT5, true);
-
-				ctlOverall.logClockTime();
+                countCliques(conf, cCountCliques, fs, ctlOverall);
             }
             else if(command.equals(COMMAND_COUNT_TRIANGLES)) {
 
@@ -440,7 +451,6 @@ public class QkCountDriver {
 			jc.usage();
 			System.exit(0);
 		}		
-
 	}
 
 }

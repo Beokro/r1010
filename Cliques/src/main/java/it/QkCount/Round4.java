@@ -181,7 +181,6 @@ public class Round4 extends AbstractRound implements Tool {
 				}
 
 			} else {
-                System.err.println("yosh");
 				//Input of type <u:d(u), v:d(v)>.
 
 				Round4.commonMapFragment(key, value, context);
