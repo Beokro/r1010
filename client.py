@@ -17,7 +17,7 @@ class TcpClient():
         self.destHost = destHost
         self.destPort = destPort
         self.lock = threading.Lock()
-        self.currentSize = currentSize
+        self.currentSize = 0
         self.currentGraph = ' '
         self.cliqueSize = sys.maxsize
         self.sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
@@ -30,7 +30,8 @@ class TcpClient():
 
     def connctToHost( self ):
         try:
-            self.sock.connect( self.destHost, self.destPort )
+            self.sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
+            self.sock.connect( ( self.destHost, self.destPort ) )
         except:
             print 'connection failed'
             sys.exit()
@@ -64,8 +65,8 @@ class TcpClient():
         message = server.recv( 20 )
         if message != exchangeConfirmedMessage:
             return
-        server.send( self.currentSize )
-        server.send( self.cliqueSize )
+        server.send( str( self.currentSize ) )
+        server.send( str( self.cliqueSize ) )
 
         message = server.recv( 20 )
         # case A
@@ -80,7 +81,7 @@ class TcpClient():
         global tranmissionCompleteMessage
         global denyMessage
         server = self.sock
-        server.send( currentGraph )
+        server.send( self.currentGraph )
         message = server.recv( 20 )
 
         # case A_0.2, case A_1.2
@@ -104,7 +105,18 @@ class TcpClient():
         return
 
     def handleProblemSizeChanged( self ):
+        server = self.sock
         self.currentSize = int( server.recv( 20 ) )
         self.currentGraph = server.recv( self.currentSize * self.currentSize + 10 )
+        # update the graph to the second file
 
 
+if __name__ == "__main__":
+    port_num = 7788
+    try:
+        temp = TcpClient('127.0.0.1', port_num )
+        temp.runForEver()
+    except KeyboardInterrupt:
+        print '^C received, shutting down the web server'
+        temp.sock.close()
+        exit()
