@@ -1,6 +1,7 @@
 import sys
 import socket
 import threading
+import fcntl
 
 requestMessage = 'request'
 denyMessage = 'deny'
@@ -24,9 +25,44 @@ class TcpClient():
 
 
     def getResult( self ):
-        # somehow get thre result of computation
-        # also need to read the graph corresponding to the result
-        return 1
+        # read the compute result from the file and then update it
+        x = open( 'result')
+        while True:
+            try:
+                fcntl.flock( x, fcntl.LOCK_EX | fcntl.LOCK_NB )
+                result = int( x.readline() )
+                graph = x.readline()
+                fcntl.flock( x, fcntl.LOCK_UN )
+                break
+            except IOError as e:
+                print 'write failed\n'
+                # raise on unrelated IOErrors
+                if e.errno != errno.EAGAIN:
+                    raise
+                else:
+                    time.sleep(0.1)
+        return result,graph
+
+    def writeResult( self ):
+        # don't want to use w+ flag because that will empty the file without getting lock
+        x = open( 'serverUpdate', 'a+' )
+        while True:
+            try:
+                fcntl.flock( x, fcntl.LOCK_EX | fcntl.LOCK_NB )
+                # empty the file
+                x.seek(0)
+                x.truncate()
+                x.write( str( self.cliqueSize ) + '\n' )
+                x.write( self.currentGraph )
+                fcntl.flock( x, fcntl.LOCK_UN )
+                break
+            except IOError as e:
+                print 'write failed\n'
+                # raise on unrelated IOErrors
+                if e.errno != errno.EAGAIN:
+                    raise
+                else:
+                    time.sleep(0.1)
 
     def connctToHost( self ):
         try:
@@ -45,9 +81,10 @@ class TcpClient():
         self.currentGraph = self.sock.recv( self.currentSize * self.currentSize + 10 )
 
         while True:
-            result = self.getResult()
+            result, graph = self.getResult()
             if result < self.cliqueSize:
                 self.cliqueSize = result
+                self.currentGraph = graph
                 self.startExchange()
 
     def startExchange( self ):
@@ -109,6 +146,7 @@ class TcpClient():
         self.currentSize = int( server.recv( 20 ) )
         self.currentGraph = server.recv( self.currentSize * self.currentSize + 10 )
         # update the graph to the second file
+        self.writeResult()
 
 
 if __name__ == "__main__":
