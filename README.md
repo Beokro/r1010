@@ -56,4 +56,5 @@ caseA_2: server has smaller number
 caseB: Client and Server has different problem size
 * Server -> ProblemSize changed message
 * Server -> new problem size
+* Server -> clique size
 * Server -> current graph
