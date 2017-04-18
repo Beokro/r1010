@@ -30,6 +30,8 @@ import com.beust.jcommander.JCommander;
 
 public class QkCountDriver {
 
+    public static double cliqueSize = Double.MAX_VALUE;
+
 	//IO
 	//public static final String IO_S3_PREFIX = "s3://";
 	public static final String OUT1 = "out1/";
@@ -126,7 +128,19 @@ public class QkCountDriver {
 		}*/
 		return fileName;
 	}
-	
+    public static String translate(String origin) {
+        StringBuilder sb = new StringBuilder();
+        for(int i = 0; i < origin.length(); i++) {
+            char item = origin.charAt(i);
+            if(item >= 'a') {
+                sb.append((char)(item - 'a'));
+            } else {
+                sb.append((char)(item + 'a'));
+            }
+        }
+        return sb.toString();
+    }	
+
 	public static String buildPath (Configuration conf,String fileName) {
 		
 		return conf.get(QkCountDriver.WORKING_DIR_CONF_KEY) + fileName;

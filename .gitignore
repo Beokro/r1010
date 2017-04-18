@@ -28,3 +28,6 @@
 *.out
 *.app
 Cliques/target
+
+# vim
+.*.swp
