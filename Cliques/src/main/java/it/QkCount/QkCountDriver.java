@@ -39,6 +39,8 @@ public class QkCountDriver {
 	public static final String OUT3 = "out3/";
 	public static final String OUT4 = "out4/";
 	public static final String OUT5 = "out5/";
+	public static final String NEIGH1= "neigh1/";
+	public static final String NEIGH2= "neigh2/";
 	public static final int TASK_TIMEOUT = 10800000;
 
 	//FILENAMES CANNOT HAVE "_"!
@@ -146,6 +148,45 @@ public class QkCountDriver {
 		return conf.get(QkCountDriver.WORKING_DIR_CONF_KEY) + fileName;
 	}
 	
+    public static void getBestNeighbor(Configuration conf,
+                                    CommandCountCliques cCountCliques,
+                                    FileSystem fs,
+                                    ClockTimeLogger ctlOverall) throws Exception{
+
+        conf.setInt(ROUND_NUMBER_CONF_KEY, 7);
+        conf.set(ROUND_JOB_NAME_CONF_KEY, "Round7");
+        QkCountDriver.setCommonArgs(conf, cCountCliques);
+
+        int res = 0;
+        AbstractRound round;
+        round = new BestNeighbor1();
+
+        ClockTimeLogger ctl;
+        ctl = new ClockTimeLogger(cCountCliques.getFileOut() + " Best Neighbor 1", "-");
+        
+        res = ToolRunner.run(conf, round, new String[]{
+                    QkCountDriver.buildIoPath(conf, cCountCliques.getFileIn()),
+                    QkCountDriver.buildPath(conf,NEIGH1)
+                });
+        ctl.logClockTime();
+
+        conf.setInt(ROUND_NUMBER_CONF_KEY, 8);
+        conf.set(ROUND_JOB_NAME_CONF_KEY, "Round8");
+
+        round = new BestNeighbor2();
+
+        ctl = new ClockTimeLogger(cCountCliques.getFileOut() + " Best Neighbor 2", "-");
+        
+        res = ToolRunner.run(conf, round, new String[]{
+                QkCountDriver.buildPath(conf,NEIGH1), 
+                QkCountDriver.buildPath(conf,NEIGH2), 
+                //QkCountDriver.buildIoPath(conf, cComputeDegrees.getFileOut())
+        }) + res;
+        ctl.logClockTime();
+        
+        QkCountDriver.delete(conf, fs, NEIGH1, true);
+    }
+
     public static void countCliques(Configuration conf, 
                                     CommandCountCliques cCountCliques,
                                     FileSystem fs,
@@ -365,7 +406,8 @@ public class QkCountDriver {
 				QkCountDriver.delete(conf, fs, OUT1, true);
             }
             else if(command.equals(COMMAND_COUNT_CLIQUES)) {
-
+                
+                getBestNeighbor(conf, cCountCliques, fs, ctlOverall);
                 countCliques(conf, cCountCliques, fs, ctlOverall);
             }
             else if(command.equals(COMMAND_COUNT_TRIANGLES)) {

@@ -49,7 +49,8 @@ public class BestNeighbor1 extends AbstractRound implements Tool {
             String match = key.toString() + '\t' + value.toString();
             String change = QkCountDriver.translate(key.toString()) + 
                                 '\t' + QkCountDriver.translate(value.toString());
-            String file = UUID.randomUUID().toString() + ".txt";
+            String fileName = UUID.randomUUID().toString() + ".txt";
+            String file = fileName + ".txt";
             if(key.compareTo(value) == -1) {
                 Text temp = key;
                 key = value;
@@ -87,7 +88,7 @@ public class BestNeighbor1 extends AbstractRound implements Tool {
                     ex.printStackTrace();
                 }
             }
-            String[] command = {"./approx.sh", "graph", Integer.toString(lines)};
+            String[] command = {"./approx.sh", fileName, Integer.toString(lines)};
             Runtime.getRuntime().exec(command).waitFor();
             fr = new FileReader("./approx.txt");
             br = new BufferedReader(fr);
