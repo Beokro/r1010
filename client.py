@@ -2,6 +2,7 @@ import sys
 import socket
 import threading
 import fcntl
+import time
 
 requestMessage = 'request'
 denyMessage = 'deny'
@@ -30,6 +31,7 @@ class TcpClient():
         while True:
             try:
                 fcntl.flock( x, fcntl.LOCK_EX | fcntl.LOCK_NB )
+                size = int( x.readline() )
                 result = int( x.readline() )
                 graph = x.readline()
                 fcntl.flock( x, fcntl.LOCK_UN )
@@ -41,7 +43,8 @@ class TcpClient():
                     raise
                 else:
                     time.sleep(0.1)
-        return result,graph
+        x.close()
+        return size, result, graph
 
     def writeResult( self ):
         # don't want to use w+ flag because that will empty the file without getting lock
@@ -52,6 +55,7 @@ class TcpClient():
                 # empty the file
                 x.seek(0)
                 x.truncate()
+                x.write( str( self.currentSize ) + '\n' )
                 x.write( str( self.cliqueSize ) + '\n' )
                 x.write( self.currentGraph )
                 fcntl.flock( x, fcntl.LOCK_UN )
@@ -63,6 +67,7 @@ class TcpClient():
                     raise
                 else:
                     time.sleep(0.1)
+        x.close()
 
     def connctToHost( self ):
         try:
@@ -81,11 +86,14 @@ class TcpClient():
         self.currentGraph = self.sock.recv( self.currentSize * self.currentSize + 10 )
 
         while True:
-            result, graph = self.getResult()
+            size, result, graph = self.getResult()
             if result < self.cliqueSize:
+                self.currentSize = size
                 self.cliqueSize = result
                 self.currentGraph = graph
                 self.startExchange()
+            print result
+            time.sleep( 5 )
 
     def startExchange( self ):
         global exchangeStartMessage
