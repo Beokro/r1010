@@ -22,7 +22,7 @@ class TcpServer( object ):
         self.lock = threading.Lock()
         self.currentSize = currentSize
         self.currentGraph = ' '
-        self.cliqueSize = sys.maxsize
+        self.cliqueSize = 111111111
         self.sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
         self.sock.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
         self.sock.bind( ( self.host, self.port ) )
@@ -44,7 +44,9 @@ class TcpServer( object ):
         print 'new connection establish'
         # send my currentSize and graph to the clinet to start the computation
         self.lock.acquire()
-        self.sendPacket( client, [ str( self.currentSize ), self.currentGraph ] )
+        self.sendPacket( client, [ str( self.currentSize ),
+                                   str( self.cliqueSize ),
+                                   self.currentGraph ] )
         self.lock.release()
 
         while True:

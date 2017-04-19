@@ -86,7 +86,8 @@ class TcpClient():
         # receive inital state, graph received might be empty
         datas = self.recvPacket( self.sock, self.currentSize * self.currentSize + 30 )
         self.currentSize = int( datas[ 0 ] )
-        self.currentGraph = datas[ 1 ]
+        self.cliqueSize = int( datas[ 1 ] )
+        self.currentGraph = datas[ 2 ]
         print 'received problem size: ' + str( self.currentSize )
         print 'receive graph : ' + self.currentGraph
 

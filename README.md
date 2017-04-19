@@ -8,6 +8,7 @@ Server Behavior
    * default current graph is ' '
 
 Server -> current size
+Server -> clique size
 Server -> current graph
 
 Loop Start
