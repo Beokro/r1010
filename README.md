@@ -14,8 +14,7 @@ Loop Start
 
 * Client -> exchange start request message
 * Server -> exchange start confirmed message
-* Client -> current problem
-* Client -> smallest clique size it get
+* Client -> current problem + smallest clique size it get
 
 caseA: Client and Server has the same problem size
 
@@ -25,10 +24,8 @@ caseA_0: client's clique size is 0:
 
 caseA_0.1: graph is valid
 * Server increment the problem size, reset the clique size and graph
-* Server -> ProblemSize changed message
-* Server -> new problem size
-* Server -> current grpah
-* Server -> tranmission complete message
+* Server -> ProblemSize changed message + new problem size +
+            current grpah + tranmission complete message
 
 caseA_0.2: graph is invalid
 * Server -> error message
@@ -47,14 +44,12 @@ caseA_1.2: received graph is invalid
 
 
 caseA_2: server has smaller number
-* Server -> deny message
-* Server -> current clique size
-* Server -> current graph
+* Server -> deny message + current clique size + current graph
 
+caseA_3: server and client have same clique number
+* Server -> deny message + tie message
 
 
 caseB: Client and Server has different problem size
-* Server -> ProblemSize changed message
-* Server -> new problem size
-* Server -> clique size
-* Server -> current graph
+* Server -> ProblemSize changed message + new problem size + 
+            clique size + current graph

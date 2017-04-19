@@ -6,6 +6,7 @@ import time
 
 requestMessage = 'request'
 denyMessage = 'deny'
+tieMessage = 'tie'
 errorMessage = 'error'
 problemSizeChangedMessage = 'sizeChanged'
 restartMessage = 'restart'
@@ -59,6 +60,7 @@ class TcpClient():
                 x.write( str( self.cliqueSize ) + '\n' )
                 x.write( self.currentGraph )
                 fcntl.flock( x, fcntl.LOCK_UN )
+                print 'wrtite complete'
                 break
             except IOError as e:
                 print 'write failed\n'
@@ -85,6 +87,8 @@ class TcpClient():
         datas = self.recvPacket( self.sock, self.currentSize * self.currentSize + 30 )
         self.currentSize = int( datas[ 0 ] )
         self.currentGraph = datas[ 1 ]
+        print 'received problem size: ' + str( self.currentSize )
+        print 'receive graph : ' + self.currentGraph
 
         while True:
             size, result, graph = self.getResult()
@@ -93,7 +97,6 @@ class TcpClient():
                 self.cliqueSize = result
                 self.currentGraph = graph
                 self.startExchange()
-            print result
             time.sleep( 5 )
 
     def startExchange( self ):
@@ -101,23 +104,29 @@ class TcpClient():
         global exchangeConfirmedMessage
         global requestMessage
         global errorMessage
+        global denyMessage
 
         server = self.sock
         serverSize = -1
         message = ' '
 
         # Loop Start
-        self.sendPacket( server, exchangeStartMessage )
+        print 'data exchange start'
+        self.sendPacket( server, [ exchangeStartMessage ] )
         message = self.recvPacket( server, 20 )[ 0 ]
+        print 'data exchange ' + message
         if message != exchangeConfirmedMessage:
             return
         self.sendPacket( server, [ str( self.currentSize ), str( self.cliqueSize ) ] )
 
         datas = self.recvPacket( server, self.currentSize * self.currentSize + 70 )
         message = datas[ 0 ]
-        # case A
+        # case A_0 and case A_1
         if message == requestMessage:
             self.handleRequestGrpah()
+        # case A_2
+        elif message == denyMessage:
+            self.handleDeny( datas )
         # case B
         else:
             self.handleProblemSizeChanged( datas )
@@ -127,6 +136,8 @@ class TcpClient():
         global tranmissionCompleteMessage
         global denyMessage
         server = self.sock
+
+        print 'server request my graph'
         self.sendPacket( server, [ self.currentGraph ] )
         datas = self.recvPacket( server, self.currentSize * self.currentSize + 70 )
         message = datas[ 0 ]
@@ -142,20 +153,27 @@ class TcpClient():
                 print "exchange with server end with unexpect " + message
         # case A_1.1
         elif message == tranmissionCompleteMessage:
+            print 'exchange complete'
             return
-        # case A_2
-        elif message == denyMessage:
-            self.cliqueSize = int( datas[ 1 ] )
-            self.currentGraph = datas[ 2 ]
         else:
             print "repsone from server is unexpected: " + message
         return
 
+    def handleDeny( self, datas ):
+        global tieMessage
+        if datas[ 1 ] == tieMessage:
+            print 'server and client haave same clique'
+        else:
+            print 'server has better clique size ' + datas[ 1 ]
+            self.cliqueSize = int( datas[ 1 ] )
+            self.currentGraph = datas[ 2 ]
+            self.writeResult()
+
     def handleProblemSizeChanged( self, datas ):
-        server = self.sock
         self.currentSize = int( datas[ 1 ] )
         self.cliqueSize = int( datas[ 2 ] )
         self.currentGraph = datas[ 3 ]
+        print 'size not matched to server, set to ' + datas[ 1 ]
         # update the graph to the second file
         self.writeResult()
 

@@ -5,6 +5,7 @@ import os
 
 requestMessage = 'request'
 denyMessage = 'deny'
+tieMessage = 'tie'
 errorMessage = 'error'
 problemSizeChangedMessage = 'sizeChanged'
 restartMessage = 'restart'
@@ -40,6 +41,7 @@ class TcpServer( object ):
         recvSize = 15
 
         # Loop Start
+        print 'new connection establish'
         # send my currentSize and graph to the clinet to start the computation
         self.lock.acquire()
         self.sendPacket( client, [ str( self.currentSize ), self.currentGraph ] )
@@ -48,6 +50,7 @@ class TcpServer( object ):
         while True:
             try:
                 data = self.recvPacket( client, recvSize )[ 0 ]
+                print 'data exchange start'
                 if data:
                     self.handleClique( data, client )
                 else:
@@ -78,6 +81,8 @@ class TcpServer( object ):
         datas = self.recvPacket( client, 45 )
         clientProblemSize = int( datas[ 0 ] )
         clientCliqueSize = int ( datas[ 1 ] )
+        print 'client has problem size: ' + str( clientProblemSize ) +\
+            ' clique: ' + str( clientCliqueSize )
 
         self.lock.acquire()
 
@@ -88,8 +93,11 @@ class TcpServer( object ):
         elif clientCliqueSize < self.cliqueSize:
             self.requestAndHandleNewGraph( client, clientCliqueSize )
         # case A_2
+        elif clientCliqueSize > self.cliqueSize:
+            self.denyNewGraph( client, False )
+        # case A_3
         else:
-            self.denyNewGraph( client )
+            self.denyNewGraph( client, True )
         self.lock.release()
 
     def handleUnexpectMessage( self, client, expecting, received ):
@@ -106,13 +114,15 @@ class TcpServer( object ):
         global tranmissionCompleteMessage
         graph = ' '
         recvSize = self.currentSize * self.currentSize + 10
-        # request the matrix from the client
 
+        # request the matrix from the client
+        print 'request graph from client'
         self.sendPacket( client, [ requestMessage ] )
         graph = self.recvPacket( client, recvSize )[ 0 ]
 
         # case A_0.2 & case A_1.2, invalid graph
         if not self.validGraph( graph ):
+            print 'graph from client is invalid'
             self.sendPacket( client, [ errorMessage ] )
             return
 
@@ -125,17 +135,24 @@ class TcpServer( object ):
             self.currentSize += 1
             self.currentGraph = ' '
             self.cliqueSize = sys.maxsize
+            print 'answer found, update problem size'
             self.handleDifferentProblemSize( client )
         # case A_1.1, tranmission complete
         else:
+            print 'exchange complete'
             self.sendPacket( client, [ tranmissionCompleteMessage ] )
 
-    def denyNewGraph( self, client ):
+    def denyNewGraph( self, client, tie ):
         # deny the matrix, not need to send if it is worse than current one
         # instead server will send its graph to client
         global denyMessage
-
-        self.sendPacket( client, [ denyMessage, str( self.cliqueSize ), str( self.currentGraph ) ] )
+        global tieMessage
+        if tie:
+            print 'server and client has the same clique number'
+            self.sendPacket( client, [ denyMessage, tieMessage ] )
+        else :
+            print 'server has better graph, send it to client'
+            self.sendPacket( client, [ denyMessage, str( self.cliqueSize ), str( self.currentGraph ) ] )
 
     def validGraph( self, graph ):
         # don't need to lock here, if size has been changed
@@ -154,11 +171,11 @@ class TcpServer( object ):
     # handle case B
     def handleDifferentProblemSize( self, client ):
         global problemSizeChangedMessage
-        print 'here'
+        print 'problem sized not matched, start to sync'
         datas = [ problemSizeChangedMessage,
                   str( self.currentSize ),
-                  str( self.cliqueSize )
-                  str( self.currentGraph ),
+                  str( self.cliqueSize ),
+                  self.currentGraph,
                   tranmissionCompleteMessage ]
         self.sendPacket( client, datas )
         return
