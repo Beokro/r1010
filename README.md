@@ -53,4 +53,4 @@ caseA_3: server and client have same clique number
 
 caseB: Client and Server has different problem size
 * Server -> ProblemSize changed message + new problem size + 
-            clique size + current graph
+            clique size + current graph + tranmission complete message

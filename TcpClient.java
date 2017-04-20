@@ -17,18 +17,30 @@ public class TcpClient {
     static final String tranmissionCompleteMessage = "complete";
     static final String readFailedMessage = "readFailed";
 
-    String destHost;
-    int destPort;
-    int currentSize = 0;
-    int cliqueSize = Integer.MAX_VALUE;
-    String currentGraph = " ";
-    Socket sock;
-    BufferedReader sockReader;
-    BufferedWriter sockWriter;
+    private String destHost;
+    private int destPort;
+    private int currentSize = 0;
+    private int cliqueSize = Integer.MAX_VALUE;
+    private String currentGraph = " ";
+    private Socket sock;
+    private BufferedReader sockReader;
+    private BufferedWriter sockWriter;
 
     public TcpClient( String destHost, int destPort ) {
         this.destHost = destHost;
         this.destPort = destPort;
+    }
+
+    public int getCurrentSize() {
+        return currentSize;
+    }
+
+    public int getCliqueSize() {
+        return cliqueSize;
+    }
+
+    public String getGraph() {
+        return currentGraph;
     }
 
     public boolean connectToHost() {
@@ -57,6 +69,94 @@ public class TcpClient {
                             Integer.toString( cliqueSize ) );
     }
 
+    // call by algorithm, start the exchange with server
+    public void updateFromAlg( int problemSize, int cliqueSize, String graph ) {
+        this.currentSize = problemSize;
+        this.cliqueSize = cliqueSize;
+        this.currentGraph = graph;
+        startExchange();
+    }
+
+    // handle the exchange with server
+    public void startExchange() {
+        String message;
+
+        System.out.println( "exchange start" );
+        write( new String[] { exchangeStartMessage } );
+        message = read();
+        if ( !message.equals( exchangeConfirmedMessage ) ) {
+            System.out.println( "message = " + message );
+            System.out.println( "expecting = " + exchangeConfirmedMessage );
+            // exchange is not sync with server, end conversion
+            return;
+        }
+        write( new String[] { Integer.toString( currentSize ),
+                              Integer.toString( cliqueSize )} );
+        message = read();
+        if ( message.equals( requestMessage ) ) {
+            // case A_0 and case A_1
+            handleRequestGraph();
+        } else if ( message.equals( denyMessage ) ) {
+            // case A_2
+            handleDeny();
+        } else if ( message.equals( problemSizeChangedMessage ) ) {
+            handleProblemSizeChanged();
+        } else {
+            System.out.println( "Unexpected message from server " + message );
+        }
+    }
+
+    public void handleRequestGraph() {
+        String message = "";
+        System.out.println( "server request client side graph" );
+        write( new String[] { currentGraph } );
+        message = read();
+
+        if ( message.equals( errorMessage ) ) {
+            // case A_0.2, case A_1.2
+            System.out.println( "client side graph is corrupted or invalid" );
+            return;
+        } else if ( message.equals( problemSizeChangedMessage ) ) {
+            // case A_0.1
+            handleProblemSizeChanged();
+        } else if ( message.equals( tranmissionCompleteMessage ) ) {
+            // case A_1.1
+            System.out.println( "exchange complete" );
+        } else {
+            unpextedMessage( tranmissionCompleteMessage, message );
+        }
+
+    }
+
+    public void handleProblemSizeChanged() {
+        String message = "";
+        this.currentSize = Integer.parseInt( read() );
+        this.cliqueSize = Integer.parseInt( read() );
+        this.currentGraph = read();
+        System.out.println( "problem size not matched with server, now = " + this.currentSize );
+        message = read();
+        if ( message.equals( tranmissionCompleteMessage ) ) {
+            System.out.println( "exchange complete" );
+        } else {
+            unpextedMessage( tranmissionCompleteMessage, message );
+        }
+    }
+
+    public void unpextedMessage( String expecting, String got ) {
+        System.out.println( "expecting " + expecting );
+        System.out.println( "got " + got );
+    }
+
+    public void handleDeny() {
+        String message = read();
+        if ( message.equals( tieMessage ) ) {
+            System.out.println( "server and client haave same clique" );
+        } else {
+            this.cliqueSize = Integer.parseInt( message );
+            this.currentGraph = read();
+        }
+    }
+
     // read from client
     public String read() {
         try {
@@ -68,9 +168,29 @@ public class TcpClient {
         }
     }
 
+    // combine all the messages and send it all at once
+    public void write( String[] messages ) {
+        try {
+            StringBuilder message = new StringBuilder();
+            for ( String m : messages ) {
+                message.append( m );
+                message.append( "\n" );
+            }
+            sockWriter.write( message.toString() );
+            sockWriter.flush();
+        } catch( IOException i ) {
+            System.out.println( "failed to send message to host" );
+            i.printStackTrace();
+            return;
+        }
+    }
+
     public static void main( String[] args ) {
         TcpClient client = new TcpClient( "localhost", 7788 );
         client.run();
+        client.updateFromAlg( 6, 5, "0000000000000000000000000" );
+        client.updateFromAlg( 5, 5, "0000000000000000000000000" );
+        client.updateFromAlg( 5, 5, "0000000000000000000000000" );
     }
 
 }
