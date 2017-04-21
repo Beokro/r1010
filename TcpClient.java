@@ -5,6 +5,14 @@ import java.io.OutputStreamWriter;
 import java.io.IOException;
 import java.net.Socket;
 
+// look at the example at the main
+// bascially call updateFromAlg( int problemSize, int cliqueSize, String graph )
+// whenever coummuncation with server is needed
+// use getCurrentSize, getCliqueSize, getGraph to check on the update from the server
+// if graph does not change, it means server either accept client's graph or
+// server has a graph that has the same clique size
+// if graph changes, it means either problem size is increased or server sent client
+// a graph with smaller clique
 public class TcpClient {
     static final String requestMessage = "request";
     static final String denyMessage = "deny";
@@ -196,6 +204,7 @@ public class TcpClient {
         }
     }
 
+    /*
     public static void main( String[] args ) {
         TcpClient client = new TcpClient( "localhost", 7788 );
         client.run();
@@ -207,6 +216,6 @@ public class TcpClient {
         client.updateFromAlg( 5, 0, "0000000000000000000000000" );
         client.updateFromAlg( 6, 100, "000000000000000000000000000000000000" );
         client.close();
-    }
+        } */
 
 }
