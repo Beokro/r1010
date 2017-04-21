@@ -185,12 +185,28 @@ public class TcpClient {
         }
     }
 
+    // close the connection gracefully
+    public void close() {
+        try {
+            sock.close();
+        } catch( IOException i ) {
+            System.out.println( "failed to close the connection with server" );
+            i.printStackTrace();
+            return;
+        }
+    }
+
     public static void main( String[] args ) {
         TcpClient client = new TcpClient( "localhost", 7788 );
         client.run();
         client.updateFromAlg( 6, 5, "0000000000000000000000000" );
         client.updateFromAlg( 5, 5, "0000000000000000000000000" );
         client.updateFromAlg( 5, 5, "0000000000000000000000000" );
+        client.updateFromAlg( 5, 4, "000000000000000000000000" );
+        client.updateFromAlg( 5, 4, "0000000000000000000000000" );
+        client.updateFromAlg( 5, 0, "0000000000000000000000000" );
+        client.updateFromAlg( 6, 100, "000000000000000000000000000000000000" );
+        client.close();
     }
 
 }

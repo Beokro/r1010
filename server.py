@@ -136,7 +136,7 @@ class TcpServer( object ):
         if clientCliqueSize == 0:
             self.currentSize += 1
             self.currentGraph = ' '
-            self.cliqueSize = sys.maxsize
+            self.cliqueSize = 111111111
             print 'answer found, update problem size'
             self.handleDifferentProblemSize( client )
         # case A_1.1, tranmission complete
