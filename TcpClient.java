@@ -4,6 +4,9 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.IOException;
 import java.net.Socket;
+import java.util.concurrent.TimeUnit;
+import java.util.Random;
+
 
 // look at the example at the main
 // bascially call updateFromAlg( int problemSize, int cliqueSize, String graph )
@@ -162,6 +165,7 @@ public class TcpClient {
         } else {
             this.cliqueSize = Integer.parseInt( message );
             this.currentGraph = read();
+            System.out.println( "server has better clique " + message );
         }
     }
 
@@ -204,10 +208,15 @@ public class TcpClient {
         }
     }
 
-    /*
+
     public static void main( String[] args ) {
         TcpClient client = new TcpClient( "localhost", 7788 );
+        Random rand = new Random();
+        int reduce = 0;
+        int currentClique = 500;
         client.run();
+        /*
+          regualr test
         client.updateFromAlg( 6, 5, "0000000000000000000000000" );
         client.updateFromAlg( 5, 5, "0000000000000000000000000" );
         client.updateFromAlg( 5, 5, "0000000000000000000000000" );
@@ -215,7 +224,24 @@ public class TcpClient {
         client.updateFromAlg( 5, 4, "0000000000000000000000000" );
         client.updateFromAlg( 5, 0, "0000000000000000000000000" );
         client.updateFromAlg( 6, 100, "000000000000000000000000000000000000" );
+        */
+        client.updateFromAlg( 5, currentClique, "0000000000000000000000000" );
+
+        while ( true ) {
+            try{
+                TimeUnit.SECONDS.sleep( 5 );
+            } catch ( Exception e ) {
+                return;
+            }
+            reduce = rand.nextInt( 5 );
+            currentClique -= reduce;
+            if ( currentClique <= 0 ) {
+                break;
+            }
+            client.updateFromAlg( 5, currentClique, "0000000000000000000000000" );
+        }
+
         client.close();
-        } */
+    }
 
 }
