@@ -5,7 +5,7 @@
 
 3.  default current graph is ' '
 
-# Protocol 
+# Server Client Protocol 
 Server -> current size
 Server -> clique size
 Server -> current graph
@@ -53,3 +53,13 @@ caseA_1.2: received graph is invalid
 ## caseB: Client and Server has different problem size
 * Server -> ProblemSize changed message + new problem size + 
             clique size + current graph + tranmission complete message
+
+
+# Server to Server
+
+* The  main server  is the server that started first. In order to handle the case that main server died, there will be backup servers too. Backup server connect to main server to share its ip address and port. 
+* Main server will send the backup server's addresses and ports to all of its client. 
+* If main server go down, client will try to connect to first candidate backup server instead. 
+* Backup server will sync with main server every 2 minutes. 
+* Main server will also send backup servers the ip address and ports of other backup servers. 
+* When backup server connect to main server, it will know if it is the first candidate backup server. If it is not the first candidate, it will connect to first candidate server and treat that as main server
