@@ -7,7 +7,8 @@
 4. Be aware that all sequential message is send as a long message separated by '\n'
 
 # Server Client Protocol 
-            Clinet -> I am a client
+            Clinet -> I am a client ( Not yet implemented )
+            Server -> backup server addr ( ' ' if none ) ( Not yet implemented )
             Server -> current size
             Server -> clique size
             Server -> current graph
@@ -16,6 +17,7 @@ Loop Start
 
             Client -> exchange start request message
             Server -> exchange start confirmed message
+            Server -> backup server addr ( ' ' if none ) ( Not yet implemented )
             Client -> current problem
             Client -> smallest clique size it get
 ## caseA: Client and Server has the same problem size
@@ -72,7 +74,7 @@ Loop Start
 * Main server will also send backup servers the ip address and ports of other backup servers. 
 * When backup server connect to main server, it will know if it is the first candidate backup server. If it is not the first candidate, it will connect to first candidate server and treat that as main server
 
-# Server Server Protocl
+# Server Server Protocl ( Not yet implemented )
 
 Backup -> I am a server
 
@@ -86,6 +88,7 @@ Backup -> I am a server
 
 ## case D if it is not first backup server
             Server -> not first candidate message
+            Server -> address of first candidate
             Backup -> sync request
             Server -> current size
             Server -> clique size
@@ -96,6 +99,7 @@ Backup -> I am a server
             Backup -> sync request
             Server -> current size
             Server -> clique size
+            Server -> first candidate address 
 
 ### case E main server has better clique or problem size changed
             Backup -> graph request
@@ -104,3 +108,4 @@ Backup -> I am a server
 
 ### case F clique size and problem size both not change
             Backup -> sync complete
+            
