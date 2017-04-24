@@ -1,4 +1,4 @@
-package TcpClient;
+package it.TcpClient;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.InputStreamReader;
