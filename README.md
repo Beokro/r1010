@@ -36,11 +36,11 @@ Loop Start
             Server -> Request message
             Client -> grpah that has the sent clique number
 
-caseA_1.1: received graph is valid
+#### caseA_1.1: received graph is valid
             Server keep the graph
             Server -> tranmission complete message
 
-caseA_1.2: received graph is invalid
+#### caseA_1.2: received graph is invalid
             Server -> error message
 
 
