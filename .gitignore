@@ -27,7 +27,14 @@
 *.exe
 *.out
 *.app
+
 Cliques/target
 
 # vim
 .*.swp
+
+# Compiled class file
+*.class
+
+# log file
+*.log
