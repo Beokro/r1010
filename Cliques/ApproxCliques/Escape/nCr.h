@@ -41,7 +41,7 @@ void populate_nCr()
 
             std::stringstream convertor(val);
             convertor >> nCr[row][col];
-            // std::cout << nCr[row][col] << " ";
+             std::cout << nCr[row][col] << " ";
         }
         //std::cout << std::endl;
     }

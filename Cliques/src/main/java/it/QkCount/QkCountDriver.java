@@ -11,7 +11,9 @@ package it.QkCount;
 
 
 
-
+import java.Util.Random;
+import java.Util.Set;
+import java.Util.HashSet;
 import it.Util.AbstractCommand;
 import it.Util.ClockTimeLogger;
 import it.Util.CommandComputeDegrees;
@@ -135,13 +137,13 @@ public class QkCountDriver {
         for(int i = 0; i < origin.length(); i++) {
             char item = origin.charAt(i);
             if(item >= 'a') {
-                sb.append((char)(item - 'a'));
+                sb.append((char)(item - 'a' + '0'));
             } else {
-                sb.append((char)(item + 'a'));
+                sb.append((char)(item - '0' + 'a'));
             }
         }
         return sb.toString();
-    }	
+    }
 
 	public static String buildPath (Configuration conf,String fileName) {
 		
@@ -406,9 +408,36 @@ public class QkCountDriver {
 				QkCountDriver.delete(conf, fs, OUT1, true);
             }
             else if(command.equals(COMMAND_COUNT_CLIQUES)) {
-                
-                getBestNeighbor(conf, cCountCliques, fs, ctlOverall);
-                countCliques(conf, cCountCliques, fs, ctlOverall);
+                int t0 = 3, t1 = 1000;
+                int cliques = countCliques();
+                int TABU_CAP = 300;
+                int tabuSize = 0;
+                int current = Integer.MAX_VALUE;
+                Set<String> tabuSet = new HashSet<>();
+                List<String> tabuList = new LinkedList<>();
+                while(cliques != 0) {
+                    Random rand = new Random(System.currentTimeMillis());
+                    int n = rand.nextInt(1);
+                    if(n == 0) {
+                        current = getRandomNeighbor(conf, cCountCliques, fs, ctlOverall);                                
+                    } else {
+                        current = getBestNeighbor();
+                    }
+                    if(current <= cliques) {
+                        cliques = current;
+                    } else {
+                        double prob = 
+                            Math.power(Math.E, ((double)(current - cliques))/((double)t1));
+                        if(prob - rand.nextDouble() >= 0.0001) {
+                            cliques = current;
+                        }
+                        t1 -= 1;
+                        t1 = Math.min(t1, t0);
+                    }
+                    updateTabu(tabuSet, tabuList);
+                }
+                //getBestNeighbor(conf, cCountCliques, fs, ctlOverall);
+                //countCliques(conf, cCountCliques, fs, ctlOverall);
             }
             else if(command.equals(COMMAND_COUNT_TRIANGLES)) {
 
@@ -438,7 +467,7 @@ public class QkCountDriver {
 
 
 				NodeIteratorPlusPlusRound4 nIRound4 = new NodeIteratorPlusPlusRound4(cCountTriangles.getUseLazyPairs());
-
+j
 				ctl = new ClockTimeLogger("4 G", "-");
 				res = ToolRunner.run(conf, nIRound4, new String[]{
 						QkCountDriver.buildIoPath(conf, cCountTriangles.getFileIn()),
@@ -446,7 +475,7 @@ public class QkCountDriver {
 						QkCountDriver.buildPath(conf, OUT4)}) + res;
 				ctl.logClockTime();
 
-				QkCountDriver.delete(conf, fs, OUT3, true);
+j				QkCountDriver.delete(conf, fs, OUT3, true);
 
 				//Node Iterator ++  - ROUND 5
 				conf.setInt(ROUND_NUMBER_CONF_KEY,5);

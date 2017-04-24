@@ -1,7 +1,6 @@
 ESCAPE_HOME := ../
 
-TARGETS := test_cliques_turan_shadow test_cliques_color_coding test_cliques_brute_force \
-            test_cliques_edge_sampling test_cliques_graft
+TARGETS := test_cliques_turan_shadow
 
 OBJECTS := $(TARGETS:%=%.o)
 
