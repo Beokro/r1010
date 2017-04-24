@@ -3,7 +3,8 @@
 
 2. server will listen to a selected port and wait for tcp connection from client. Upon receive the connection, it will start a thread to handle the client
 
-3.  default current graph is ' '
+3. default current graph is ' '
+4. Be aware that all sequential message is send as a long message separated by '\n'
 
 # Server Client Protocol 
             Clinet -> I am a client
@@ -15,8 +16,8 @@ Loop Start
 
             Client -> exchange start request message
             Server -> exchange start confirmed message
-            Client -> current problem + smallest clique size it get
-
+            Client -> current problem
+            Client -> smallest clique size it get
 ## caseA: Client and Server has the same problem size
 
 ### caseA_0: client's clique size is 0:
@@ -25,8 +26,10 @@ Loop Start
 
 #### caseA_0.1: graph is valid
             Server increment the problem size, reset the clique size and graph
-            Server -> ProblemSize changed message + new problem size +
-            current grpah + tranmission complete message
+            Server -> ProblemSize changed message 
+            Server -> new problem size
+            Server -> current grpah
+            Server -> tranmission complete message
 
 #### caseA_0.2: graph is invalid
             Server -> error message
@@ -45,15 +48,19 @@ Loop Start
 
 
 ### caseA_2: server has smaller number
-            Server -> deny message + current clique size + current graph
+            Server -> deny message
+            Server -> current clique size 
+            Server -> current graph
 
 ### caseA_3: server and client have same clique number
             Server -> deny message + tie message
 
 
 ## caseB: Client and Server has different problem size
-            Server -> ProblemSize changed message + new problem size + 
-            clique size + current graph + tranmission complete message
+            Server -> ProblemSize changed message
+            Server -> new problem size
+            Server -> clique size + current graph
+            Server -> tranmission complete message
 
 
 # Server to Server
