@@ -13,6 +13,8 @@ restartMessage = 'restart'
 exchangeConfirmedMessage = 'confirmed'
 exchangeStartMessage = 'start'
 tranmissionCompleteMessage = 'complete'
+clientClaimMessage = 'claimClient'
+serverClaimMessage = 'claimServer'
 logFileName = 'server.log'
 
 
@@ -26,6 +28,7 @@ class TcpServer( object ):
         self.currentGraph = ' '
         self.cliqueSize = 111111111
         self.counter = 0
+        self.backupAddr = ' '
         self.sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
         self.sock.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
         self.sock.bind( ( self.host, self.port ) )
@@ -46,20 +49,26 @@ class TcpServer( object ):
             t.start()
 
     def handleClient( self, client, address, clientID ):
-        recvSize = 15
-
-        # Loop Start
         self.doLogging( 'new connection establish', clientID )
         # send my currentSize and graph to the clinet to start the computation
         self.lock.acquire()
-        self.sendPacket( client, [ str( self.currentSize ),
+        data = self.recvPacket( client, 20 )[ 0 ]
+        if data == clientClaimMessage:
+            self.handleClientToServer( client, address, clientID )
+        else:
+            self.handleServerToServer( client, address, clientID )
+
+
+    def handleClientToServer( self, client, address, clientID ):
+        self.doLogging( ' is a client', clientID )
+        self.sendPacket( client, [ self.backupAddr,
+                                   str( self.currentSize ),
                                    str( self.cliqueSize ),
                                    self.currentGraph ] )
         self.lock.release()
-
         while True:
             try:
-                data = self.recvPacket( client, recvSize )[ 0 ]
+                data = self.recvPacket( client, 20 )[ 0 ]
                 if data:
                     self.doLogging( 'data exchange start', clientID )
                     self.handleClique( data, client, clientID )
@@ -72,6 +81,10 @@ class TcpServer( object ):
                 print ( exc_type, fname, exc_tb.tb_lineno )
                 client.close()
                 return
+
+    def handleServerToServer( self, client, address, clientID ):
+        self.doLogging( ' is a server', clientID )
+        self.lock.release()
 
     def handleClique( self, data, client, clientID ):
         global exchangeStartMessage
@@ -86,7 +99,7 @@ class TcpServer( object ):
         if data != exchangeStartMessage:
             self.handleUnexpectMessage( client, exchangeStartMessage, data, clientID )
             return
-        self.sendPacket( client, [ exchangeConfirmedMessage ] )
+        self.sendPacket( client, [ exchangeConfirmedMessage, self.backupAddr ] )
 
         # check if server and client have the same problem size
         datas = self.recvPacket( client, 45 )

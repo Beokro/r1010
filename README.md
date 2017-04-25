@@ -7,8 +7,8 @@
 4. Be aware that all sequential message is send as a long message separated by '\n'
 
 # Server Client Protocol 
-            Clinet -> I am a client ( Not yet implemented )
-            Server -> backup server addr ( ' ' if none ) ( Not yet implemented )
+            Clinet -> I am a client
+            Server -> backup server addr ( ' ' if none )
             Server -> current size
             Server -> clique size
             Server -> current graph
@@ -17,7 +17,7 @@ Loop Start
 
             Client -> exchange start request message
             Server -> exchange start confirmed message
-            Server -> backup server addr ( ' ' if none ) ( Not yet implemented )
+            Server -> backup server addr ( ' ' if none )
             Client -> current problem
             Client -> smallest clique size it get
 ## caseA: Client and Server has the same problem size
