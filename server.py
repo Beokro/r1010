@@ -3,6 +3,7 @@ import socket
 import threading
 import os
 import logging
+import getopt
 
 requestMessage = 'request'
 denyMessage = 'deny'
@@ -15,14 +16,17 @@ exchangeStartMessage = 'start'
 tranmissionCompleteMessage = 'complete'
 clientClaimMessage = 'claimClient'
 serverClaimMessage = 'claimServer'
-logFileName = 'server.log'
 
 
 class TcpServer( object ):
-    def __init__( self, host, port, currentSize ):
-        global logFileName
+    def __init__( self, host, port, destHost, destPort, timeout, logDir, backup, currentSize ):
         self.host = host
         self.port = port
+        self.destHost = destHost
+        self.destPort = destPort
+        self.timeout = timeout
+        self.logDir = logDir
+        self.backup = backup
         self.lock = threading.Lock()
         self.currentSize = currentSize
         self.currentGraph = ' '
@@ -33,7 +37,7 @@ class TcpServer( object ):
         self.sock.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
         self.sock.bind( ( self.host, self.port ) )
         logging.basicConfig( format = '%(asctime)s %(levelname)s: %(message)s',
-                             filename = logFileName,
+                             filename = self.logDir,
                              level = logging.DEBUG )
 
     def listen( self ):
@@ -218,10 +222,9 @@ class TcpServer( object ):
         return data.split( '\n' )
 
     def cleanLogFile( self ):
-        global logFileName
         # log file can hold logs for at most 10 problems
         if self.currentSize % 10 == 0:
-            open( logFileName, 'w' ).close()
+            open( self.logDir, 'w' ).close()
 
     def doLogging( self, message, clientID, level = 'info' ):
         if level == 'info':
@@ -230,11 +233,51 @@ class TcpServer( object ):
             logging.warning( 'client' + clientID + ': ' + message )
 
 
+def usage():
+    print 'python server.py [-h] [-p portnumber] [-t timeout] [-l logDir] [-a destAddr] [-d destPort] [-b]'
+
 
 if __name__ == "__main__":
-    port_num = 7788
     try:
-        temp = TcpServer('', port_num, 5)
+        opts, args = getopt.getopt( sys.argv[ 1: ], "p:ht:l:a:d:bc:",
+                                    [ "port=", "help", "timeout=", "log=",
+                                      "addrdest=", "destport", "backup", "currentSize=" ] )
+    except getopt.GetoptError as err:
+        print str( err )
+        usage()
+        sys.exit( 2 )
+
+    port = 7788
+    timeout = 60
+    logDir = 'server.log'
+    destIP = '0.0.0.0'
+    destPort = 7788
+    backup = False
+    currentSize = 5
+
+    for o, a in opts:
+        if o in ( "-h", "--help" ):
+            usage()
+            sys.exit()
+        elif o in ( "-p", "--port" ):
+            port = int( a )
+        elif o in ( "-t", "--timeout" ):
+            timeout = int( a )
+        elif o in ( "-l", "--log" ):
+            logDir = a
+        elif o in ( "-a", "--addrdest" ):
+            destIP = a
+        elif o in ( "-d", "--destport" ):
+            destPort = int( a )
+        elif o in ( "-b", "--backup" ):
+            backup = True
+        elif o in ( "-c", "--currentSize" ):
+            currentSize = int( a )
+        else:
+            assert False, "unhandled option"
+
+    try:
+        temp = TcpServer( '', port, destIP, destPort, timeout, logDir, backup, currentSize )
         temp.listen()
     except KeyboardInterrupt:
         print '^C received, shutting down the web server'
