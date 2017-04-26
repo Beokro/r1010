@@ -16,8 +16,8 @@ exchangeStartMessage = 'start'
 tranmissionCompleteMessage = 'complete'
 clientClaimMessage = 'claimClient'
 serverClaimMessage = 'claimServer'
-firstCandidateMessage = 'firstCandidate'
-notFirstCandidateMessage = 'notFirstCandidate'
+syncRequestMessage = 'syncReq'
+syncCompleteMessage = 'syncCom'
 
 
 class TcpServer( object ):
@@ -30,6 +30,7 @@ class TcpServer( object ):
         self.logDir = logDir
         self.backup = backup
         self.firstCandidateAddr = ' '
+        self.myAddr = ' '
         self.lock = threading.Lock()
         self.currentSize = currentSize
         self.currentGraph = ' '
@@ -77,21 +78,60 @@ class TcpServer( object ):
 
     def handleMainServer( backupSock ):
         global serverClaimMessage
-        global firstCandidateMessage
-        global notFirstCandidateMessage
+        global syncRequestMessage
+        global syncCompleteMessage
+
         self.sendPacket( backupSock, [ serverClaimMessage ] )
-        data = self.recvPacket( client, 40 )
-        # case D
-        if data[ 0 ] == notFirstCandidateMessage:
-            self.firstCandidateAddr = data[ 1 ]
-        elif data[ 0 ] != firstCandidateMessage:
-            self.handleUnexpectMessage( backupSock,
-                                        firstCandidateMessage,
-                                        data[ 0 ], 0, True )
-        
+        data = self.recvPacket( backupSock, 40 )
+        self.myAddr = data[ 0 ]
+        self.firstCandidateAddr = data[ 1 ]
+        '''
+            Backup -> sync request
+            Server -> current size
+            Server -> clique size
+            Server -> current graph
+            Backup -> sync complete
+        '''
+        self.sendPacket( backupSock, [ syncRequestMessage ] )
+        data = self.recvPacket( backupSock, 40 + 850 * 850 )
+        self.lock.acquire()
 
+        self.currentSize = int( data[ 0 ] )
+        self.cliqueSize = int( data[ 1 ] )
+        self.graph = data[ 2 ]
 
+        self.lock.release()
+        self.sendPacket( backupSock, [ syncCompleteMessage ] )
+        self.handlePeriodicSync( backupSock )
 
+    def handlePeriodicSync( self, backupSock ):
+        '''
+            Backup -> sync request
+            Server -> current size
+            Server -> clique size
+            Server -> first candidate address 
+        '''
+        global syncRequestMessage
+        global syncCompleteMessage
+
+        self.sendPacket( backupSock, [ syncRequestMessage ] )
+        data = self.recvPacket( backupSock, 60 )
+        self.lock.acquire()
+
+        currentSize = int( data[ 0 ] )
+        cliqueSize = int( data[ 1 ] )
+        self.firstCandidateAddr = data[ 2 ]
+
+        if self.currentSize != currentSize or self.cliqueSize > cliqueSize:
+            self.currentSize = currentSize
+            self.cliqueSize = cliqueSize
+            self.sendPacket( backupSock, [ requestMessage ] )
+            data = self.recvPacket( backupSock, self.currentSize * currentSize + 10 )
+            self.currentGraph = data[ 0 ]
+
+        self.sendPacket( backupSock, [ syncCompleteMessage ] )
+
+        self.lock.release()
 
     # end of handle server is backup server
     # ****************************

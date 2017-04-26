@@ -79,15 +79,7 @@ Loop Start
 Backup -> I am a server
 
 ## case C if it is first backup server
-            Server -> first candidate message
-            Backup -> sync request
-            Server -> current size
-            Server -> clique size
-            Server -> current graph
-            Backup -> sync complete
-
-## case D if it is not first backup server
-            Server -> not first candidate message
+            Server -> backup ip 
             Server -> address of first candidate
             Backup -> sync request
             Server -> current size
@@ -118,3 +110,4 @@ Backup -> I am a server
 * client side handle main server down
 * first candidate backup server handle main server down
 * other backup server handle main server down
+* all conversion to int might have a error
