@@ -78,7 +78,7 @@ Loop Start
 
 Backup -> I am a server
 
-## caseC if it is first backup server
+## case C if it is first backup server
             Server -> first candidate message
             Backup -> sync request
             Server -> current size
@@ -109,3 +109,12 @@ Backup -> I am a server
 ### case F clique size and problem size both not change
             Backup -> sync complete
             
+
+# ToDo List
+
+* server side handle restart
+* client side handle restart
+* server side handle backupserver request and sync
+* client side handle main server down
+* first candidate backup server handle main server down
+* other backup server handle main server down

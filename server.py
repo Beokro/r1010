@@ -16,6 +16,8 @@ exchangeStartMessage = 'start'
 tranmissionCompleteMessage = 'complete'
 clientClaimMessage = 'claimClient'
 serverClaimMessage = 'claimServer'
+firstCandidateMessage = 'firstCandidate'
+notFirstCandidateMessage = 'notFirstCandidate'
 
 
 class TcpServer( object ):
@@ -27,6 +29,7 @@ class TcpServer( object ):
         self.timeout = timeout
         self.logDir = logDir
         self.backup = backup
+        self.firstCandidateAddr = ' '
         self.lock = threading.Lock()
         self.currentSize = currentSize
         self.currentGraph = ' '
@@ -41,7 +44,12 @@ class TcpServer( object ):
                              level = logging.DEBUG )
 
     def listen( self ):
-        self.sock.listen( 5 )
+        self.sock.listen( 200 )
+        if self.backup:
+            tt = threading.Thread( target = self.contactMainServer )
+            tt.daemon = True
+            tt.start()
+            self.contactMainServer()
         while True:
             client, address = self.sock.accept()
             # need to be more careful about the timeout
@@ -51,6 +59,45 @@ class TcpServer( object ):
                                   args = ( client, address, str( self.counter ) ) )
             t.daemon = True
             t.start()
+
+
+    # ****************************
+    # ****************************
+    # ****************************
+    # start of handle server is backup server
+    def contactMainServer( self ):
+        # create a new sock and connect to server
+        backupSock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
+        try:
+            backupSock.connect( ( self.destHost, self.destPort ) )
+        except:
+            print 'connect to main server failed'
+            return
+        self.handleMainServer( backupSock )
+
+    def handleMainServer( backupSock ):
+        global serverClaimMessage
+        global firstCandidateMessage
+        global notFirstCandidateMessage
+        self.sendPacket( backupSock, [ serverClaimMessage ] )
+        data = self.recvPacket( client, 40 )
+        # case D
+        if data[ 0 ] == notFirstCandidateMessage:
+            self.firstCandidateAddr = data[ 1 ]
+        elif data[ 0 ] != firstCandidateMessage:
+            self.handleUnexpectMessage( backupSock,
+                                        firstCandidateMessage,
+                                        data[ 0 ], 0, True )
+        
+
+
+
+
+    # end of handle server is backup server
+    # ****************************
+    # ****************************
+    # ****************************
+
 
     def handleClient( self, client, address, clientID ):
         self.doLogging( 'new connection establish', clientID )
@@ -128,11 +175,11 @@ class TcpServer( object ):
             self.denyNewGraph( client, True, clientID )
         self.lock.release()
 
-    def handleUnexpectMessage( self, client, expecting, received, clientID ):
+    def handleUnexpectMessage( self, client, expecting, received, clientID, isServer = False ):
         global restartMessage
-        self.doLogging( 'received unexpected message', clientID, 'warning' )
-        self.doLogging( 'expecting ' + expecting, clientID, 'warning' )
-        self.doLogging( 'received ' + received, clientID, 'warning' )
+        self.doLogging( 'received unexpected message', clientID, 'warning', isServer )
+        self.doLogging( 'expecting ' + expecting, clientID, 'warning', isServer )
+        self.doLogging( 'received ' + received, clientID, 'warning', isServer )
         self.sendPacket( client, [ restartMessage ] )
         return
 
@@ -226,11 +273,15 @@ class TcpServer( object ):
         if self.currentSize % 10 == 0:
             open( self.logDir, 'w' ).close()
 
-    def doLogging( self, message, clientID, level = 'info' ):
-        if level == 'info':
-            logging.info( 'client' + clientID + ': ' + message )
+    def doLogging( self, message, clientID, level = 'info', isServer = False ):
+        if isServer:
+            otherSide = 'server'
         else:
-            logging.warning( 'client' + clientID + ': ' + message )
+            otherSide = 'client'
+        if level == 'info':
+            logging.info( otherSide + clientID + ': ' + message )
+        else:
+            logging.warning( otherSide + clientID + ': ' + message )
 
 
 def usage():
