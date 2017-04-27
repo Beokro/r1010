@@ -4,6 +4,7 @@ import threading
 import os
 import logging
 import getopt
+import time
 
 requestMessage = 'request'
 denyMessage = 'deny'
@@ -18,6 +19,7 @@ clientClaimMessage = 'claimClient'
 serverClaimMessage = 'claimServer'
 syncRequestMessage = 'syncReq'
 syncCompleteMessage = 'syncCom'
+backupSyncTime = 120
 
 
 class TcpServer( object ):
@@ -62,10 +64,14 @@ class TcpServer( object ):
             t.start()
 
 
-    # ****************************
-    # ****************************
-    # ****************************
+    # ********************************************************
+    # *********************************************
+    # ************************************
+    # ***************************
+    # ******************
+    # *************
     # start of handle server is backup server
+
     def contactMainServer( self ):
         # create a new sock and connect to server
         backupSock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
@@ -76,7 +82,7 @@ class TcpServer( object ):
             return
         self.handleMainServer( backupSock )
 
-    def handleMainServer( backupSock ):
+    def handleMainServer( self, backupSock ):
         global serverClaimMessage
         global syncRequestMessage
         global syncCompleteMessage
@@ -111,33 +117,33 @@ class TcpServer( object ):
             Server -> clique size
             Server -> first candidate address 
         '''
-        global syncRequestMessage
-        global syncCompleteMessage
+        global backupSyncTime
+        while True:
+            global syncRequestMessage
+            global syncCompleteMessage
 
-        self.sendPacket( backupSock, [ syncRequestMessage ] )
-        data = self.recvPacket( backupSock, 60 )
-        self.lock.acquire()
+            self.sendPacket( backupSock, [ syncRequestMessage ] )
+            data = self.recvPacket( backupSock, 60 )
+            self.lock.acquire()
 
-        currentSize = int( data[ 0 ] )
-        cliqueSize = int( data[ 1 ] )
-        self.firstCandidateAddr = data[ 2 ]
+            currentSize = int( data[ 0 ] )
+            cliqueSize = int( data[ 1 ] )
+            self.firstCandidateAddr = data[ 2 ]
 
-        if self.currentSize != currentSize or self.cliqueSize > cliqueSize:
-            self.currentSize = currentSize
-            self.cliqueSize = cliqueSize
-            self.sendPacket( backupSock, [ requestMessage ] )
-            data = self.recvPacket( backupSock, self.currentSize * currentSize + 10 )
-            self.currentGraph = data[ 0 ]
+            if self.currentSize != currentSize or self.cliqueSize > cliqueSize:
+                self.currentSize = currentSize
+                self.cliqueSize = cliqueSize
+                self.sendPacket( backupSock, [ requestMessage ] )
+                data = self.recvPacket( backupSock, self.currentSize * currentSize + 10 )
+                self.currentGraph = data[ 0 ]
 
-        self.sendPacket( backupSock, [ syncCompleteMessage ] )
+            self.sendPacket( backupSock, [ syncCompleteMessage ] )
 
-        self.lock.release()
+            self.lock.release()
+            time.sleep( backupSyncTime )
 
     # end of handle server is backup server
-    # ****************************
-    # ****************************
-    # ****************************
-
+ 
 
     def handleClient( self, client, address, clientID ):
         self.doLogging( 'new connection establish', clientID )
@@ -148,6 +154,110 @@ class TcpServer( object ):
             self.handleClientToServer( client, address, clientID )
         else:
             self.handleServerToServer( client, address, clientID )
+
+    # ********************************************************
+    # *********************************************
+    # ************************************
+    # ***************************
+    # ******************
+    # *************
+    # start of handle server to server
+
+    def handleServerToServer( self, client, address, clientID ):
+        global syncRequestMessage
+        global syncCompleteMessage
+        self.doLogging( ' is a server', clientID )
+        self.lock.release()
+        '''
+            Server -> backup ip 
+            Server -> address of first candidate
+            Backup -> sync request
+            Server -> current size
+            Server -> clique size
+            Server -> current graph
+            Backup -> sync complete
+        '''
+        if firstCandidateAddr == ' ':
+            self.firstCandidateAddr = address
+
+        self.sendPacket( client, [ address, self.firstCandidateAddr ] )
+        data = self.recvPacket( client, 20 )[ 0 ]
+        if data != syncRequestMessage:
+            self.handleUnexpectMessage( client, syncRequestMessage, data, clientID, True )
+            return
+
+        self.lock.acquire()
+        self.sendPacket( client, [ self.currentSize, self.cliqueSize, self.currentGraph ] )
+        self.lock.release()
+        data = self.recvPacket( client, 20 )[ 0 ]
+        if data != syncCompleteMessage:
+            self.handleUnexpectMessage( client, syncCompleteMessage, data, clientID, True )
+            return
+
+        while True:
+            try:
+                data = self.recvPacket( client, 20 )[ 0 ]
+                if data:
+                    self.doLogging( 'data sync start', clientID, isServer = True )
+                    self.handleBackupSync( data, client, clientID )
+                else:
+                    self.doLogging(  'backup server disconnected', clientID, 'warning' )
+                    # to do, handle backup server disconnect
+            except Exception as e:
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split( exc_tb.tb_frame.f_code.co_filename ) [ 1 ]
+                print ( exc_type, fname, exc_tb.tb_lineno )
+                client.close()
+                return
+
+
+    def handleBackupSync( self, data, client, clientID ):
+        global syncRequestMessage
+        global syncCompleteMessage
+        global requestMessage
+        '''
+            Backup -> sync request
+            Server -> current size
+            Server -> clique size
+            Server -> first candidate address
+        '''
+        if data != syncRequestMessage:
+            self.handleUnexpectMessage( client, syncRequestMessage, data, clientID, True )
+            return
+        self.lock.acquire()
+        self.sendPacket( client, [ self.currentSize, self.cliqueSize,
+                                   self.firstCandidateAddr ] )
+        self.lock.release()
+        data = self.recvPacket( client, 20 )[ 0 ]
+
+        '''
+            Backup -> graph request
+            Server -> current graph
+            Backup -> sync complete
+        '''
+        if data == requestMessage:
+            self.lock.acquire()
+            self.sendPacket( client, [ self.currentGraph ] )
+            self.lock.release()
+            data = self.recvPacket( client, 20 )[ 0 ]
+
+        '''
+            Backup -> sync complete
+        '''
+        if data != syncCompleteMessage:
+            self.handleUnexpectMessage( client, syncCompleteMessage, data, clientID, True )
+            return
+
+    # end of handle server is backup server
+
+
+    # ********************************************************
+    # *********************************************
+    # ************************************
+    # ***************************
+    # ******************
+    # *************
+    # start of handle client to server
 
 
     def handleClientToServer( self, client, address, clientID ):
@@ -173,9 +283,6 @@ class TcpServer( object ):
                 client.close()
                 return
 
-    def handleServerToServer( self, client, address, clientID ):
-        self.doLogging( ' is a server', clientID )
-        self.lock.release()
 
     def handleClique( self, data, client, clientID ):
         global exchangeStartMessage
@@ -295,6 +402,9 @@ class TcpServer( object ):
                   tranmissionCompleteMessage ]
         self.sendPacket( client, datas )
         return
+
+    # end of handle client to server
+
 
     # take care of sending multiple data at once
     def sendPacket( self, client, datas ):

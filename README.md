@@ -111,3 +111,4 @@ Backup -> I am a server
 * first candidate backup server handle main server down
 * other backup server handle main server down
 * all conversion to int might have a error
+* main server handle backup server disconnected
