@@ -45,6 +45,7 @@ class TcpServer( object ):
         logging.basicConfig( format = '%(asctime)s %(levelname)s: %(message)s',
                              filename = self.logDir,
                              level = logging.DEBUG )
+        self.doLogging( 'server run on address: ' + host + ' port: ' + str( port ), '-1' )
 
     def listen( self ):
         self.sock.listen( 200 )
@@ -52,7 +53,6 @@ class TcpServer( object ):
             tt = threading.Thread( target = self.contactMainServer )
             tt.daemon = True
             tt.start()
-            self.contactMainServer()
         while True:
             client, address = self.sock.accept()
             # need to be more careful about the timeout
@@ -108,6 +108,9 @@ class TcpServer( object ):
 
         self.lock.release()
         self.sendPacket( backupSock, [ syncCompleteMessage ] )
+        self.doLogging( 'After inital sync, currentSize = ' + str( self.currentSize ) +\
+                        ' cliqueSize =' + str( self.cliqueSize ),
+                        ' ', isServer = True )
         self.handlePeriodicSync( backupSock )
 
     def handlePeriodicSync( self, backupSock ):
@@ -119,6 +122,8 @@ class TcpServer( object ):
         '''
         global backupSyncTime
         while True:
+            time.sleep( backupSyncTime )
+            self.doLogging( 'periodic sync start', ' ', isServer = True )
             global syncRequestMessage
             global syncCompleteMessage
 
@@ -138,9 +143,12 @@ class TcpServer( object ):
                 self.currentGraph = data[ 0 ]
 
             self.sendPacket( backupSock, [ syncCompleteMessage ] )
+            self.doLogging( 'currentSize = ' + str( self.currentSize ) +\
+                            ' cliqueSize =' + str( self.cliqueSize ),
+                            ' ', isServer = True )
 
             self.lock.release()
-            time.sleep( backupSyncTime )
+            self.doLogging( 'periodic sync complete', ' ', isServer = True )
 
     # end of handle server is backup server
  
@@ -151,9 +159,9 @@ class TcpServer( object ):
         self.lock.acquire()
         data = self.recvPacket( client, 20 )[ 0 ]
         if data == clientClaimMessage:
-            self.handleClientToServer( client, address, clientID )
+            self.handleClientToServer( client, address[ 0 ], clientID )
         else:
-            self.handleServerToServer( client, address, clientID )
+            self.handleServerToServer( client, address[ 0 ], clientID )
 
     # ********************************************************
     # *********************************************
@@ -177,7 +185,7 @@ class TcpServer( object ):
             Server -> current graph
             Backup -> sync complete
         '''
-        if firstCandidateAddr == ' ':
+        if self.firstCandidateAddr == ' ':
             self.firstCandidateAddr = address
 
         self.sendPacket( client, [ address, self.firstCandidateAddr ] )
@@ -187,7 +195,9 @@ class TcpServer( object ):
             return
 
         self.lock.acquire()
-        self.sendPacket( client, [ self.currentSize, self.cliqueSize, self.currentGraph ] )
+        self.sendPacket( client, [ str( self.currentSize ),
+                                   str( self.cliqueSize ),
+                                   str( self.currentGraph ) ] )
         self.lock.release()
         data = self.recvPacket( client, 20 )[ 0 ]
         if data != syncCompleteMessage:
@@ -203,6 +213,7 @@ class TcpServer( object ):
                 else:
                     self.doLogging(  'backup server disconnected', clientID, 'warning' )
                     # to do, handle backup server disconnect
+                    raise error( 'backup server disconnected' )
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split( exc_tb.tb_frame.f_code.co_filename ) [ 1 ]
@@ -225,7 +236,8 @@ class TcpServer( object ):
             self.handleUnexpectMessage( client, syncRequestMessage, data, clientID, True )
             return
         self.lock.acquire()
-        self.sendPacket( client, [ self.currentSize, self.cliqueSize,
+        self.sendPacket( client, [ str( self.currentSize ),
+                                   str( self.cliqueSize ),
                                    self.firstCandidateAddr ] )
         self.lock.release()
         data = self.recvPacket( client, 20 )[ 0 ]
@@ -247,6 +259,7 @@ class TcpServer( object ):
         if data != syncCompleteMessage:
             self.handleUnexpectMessage( client, syncCompleteMessage, data, clientID, True )
             return
+        self.doLogging( 'data sync complete', clientID, isServer = True )
 
     # end of handle server is backup server
 
@@ -424,8 +437,10 @@ class TcpServer( object ):
             open( self.logDir, 'w' ).close()
 
     def doLogging( self, message, clientID, level = 'info', isServer = False ):
-        if isServer:
+        if isServer and not self.backup:
             otherSide = 'server'
+        elif isServer:
+            otherSide = 'main server'
         else:
             otherSide = 'client'
         if level == 'info':
@@ -477,6 +492,8 @@ if __name__ == "__main__":
         else:
             assert False, "unhandled option"
 
+    if backup and logDir == 'server.log':
+        logDir = 'backup.log'
     try:
         temp = TcpServer( '', port, destIP, destPort, timeout, logDir, backup, currentSize )
         temp.listen()
