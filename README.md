@@ -9,6 +9,7 @@
 # Server Client Protocol 
             Clinet -> I am a client
             Server -> backup server addr ( ' ' if none )
+            Server -> backup server port
             Server -> current size
             Server -> clique size
             Server -> current graph
@@ -18,6 +19,7 @@ Loop Start
             Client -> exchange start request message
             Server -> exchange start confirmed message
             Server -> backup server addr ( ' ' if none )
+            Server -> backup server port
             Client -> current problem
             Client -> smallest clique size it get
 ## caseA: Client and Server has the same problem size
@@ -79,8 +81,10 @@ Loop Start
 Backup -> I am a server
 
 ## case C if it is first backup server
-            Server -> backup ip 
+            Server -> backup address
+            Server -> backup port
             Server -> address of first candidate
+            Server -> port of first candidate
             Backup -> sync request
             Server -> current size
             Server -> clique size
@@ -91,7 +95,8 @@ Backup -> I am a server
             Backup -> sync request
             Server -> current size
             Server -> clique size
-            Server -> first candidate address 
+            Server -> first candidate address
+            Server -> first candidate port
 
 ### case E main server has better clique or problem size changed
             Backup -> graph request
@@ -106,7 +111,6 @@ Backup -> I am a server
 
 * server side handle restart
 * client side handle restart
-* server side handle backupserver request and sync
 * client side handle main server down
 * first candidate backup server handle main server down
 * other backup server handle main server down

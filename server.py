@@ -19,7 +19,7 @@ clientClaimMessage = 'claimClient'
 serverClaimMessage = 'claimServer'
 syncRequestMessage = 'syncReq'
 syncCompleteMessage = 'syncCom'
-backupSyncTime = 120
+backupSyncTime = 5
 
 
 class TcpServer( object ):
@@ -32,13 +32,14 @@ class TcpServer( object ):
         self.logDir = logDir
         self.backup = backup
         self.firstCandidateAddr = ' '
+        self.firstCandidatePort = -1
         self.myAddr = ' '
+        self.myPort = -1
         self.lock = threading.Lock()
         self.currentSize = currentSize
         self.currentGraph = ' '
         self.cliqueSize = 111111111
         self.counter = 0
-        self.backupAddr = ' '
         self.sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
         self.sock.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
         self.sock.bind( ( self.host, self.port ) )
@@ -88,9 +89,18 @@ class TcpServer( object ):
         global syncCompleteMessage
 
         self.sendPacket( backupSock, [ serverClaimMessage ] )
-        data = self.recvPacket( backupSock, 40 )
+        '''
+            Server -> backup address
+            Server -> backup port
+            Server -> address of first candidate
+            Server -> port of first candidate
+        '''
+
+        data = self.recvPacket( backupSock, 80 )
         self.myAddr = data[ 0 ]
-        self.firstCandidateAddr = data[ 1 ]
+        self.myPort = int( data[ 1 ] )
+        self.firstCandidateAddr = data[ 2 ]
+        self.firstCandidatePort = int( data[ 3 ] )
         '''
             Backup -> sync request
             Server -> current size
@@ -111,6 +121,9 @@ class TcpServer( object ):
         self.doLogging( 'After inital sync, currentSize = ' + str( self.currentSize ) +\
                         ' cliqueSize =' + str( self.cliqueSize ),
                         ' ', isServer = True )
+        self.doLogging( 'First candidate addr = ' + self.firstCandidateAddr +\
+                        '  First Candiate port = ' + str( self.firstCandidatePort ),
+                        ' ', isServer = True )
         self.handlePeriodicSync( backupSock )
 
     def handlePeriodicSync( self, backupSock ):
@@ -118,7 +131,8 @@ class TcpServer( object ):
             Backup -> sync request
             Server -> current size
             Server -> clique size
-            Server -> first candidate address 
+            Server -> first candidate address
+            Server -> first candidate port
         '''
         global backupSyncTime
         while True:
@@ -128,12 +142,13 @@ class TcpServer( object ):
             global syncCompleteMessage
 
             self.sendPacket( backupSock, [ syncRequestMessage ] )
-            data = self.recvPacket( backupSock, 60 )
+            data = self.recvPacket( backupSock, 80 )
             self.lock.acquire()
 
             currentSize = int( data[ 0 ] )
             cliqueSize = int( data[ 1 ] )
             self.firstCandidateAddr = data[ 2 ]
+            self.firstCandidatePort = int( data[ 3 ] )
 
             if self.currentSize != currentSize or self.cliqueSize > cliqueSize:
                 self.currentSize = currentSize
@@ -159,9 +174,9 @@ class TcpServer( object ):
         self.lock.acquire()
         data = self.recvPacket( client, 20 )[ 0 ]
         if data == clientClaimMessage:
-            self.handleClientToServer( client, address[ 0 ], clientID )
+            self.handleClientToServer( client, address, clientID )
         else:
-            self.handleServerToServer( client, address[ 0 ], clientID )
+            self.handleServerToServer( client, address, clientID )
 
     # ********************************************************
     # *********************************************
@@ -177,8 +192,10 @@ class TcpServer( object ):
         self.doLogging( ' is a server', clientID )
         self.lock.release()
         '''
-            Server -> backup ip 
+            Server -> backup ip
+            Server -> backup port
             Server -> address of first candidate
+            Server -> port of first candidate
             Backup -> sync request
             Server -> current size
             Server -> clique size
@@ -186,9 +203,13 @@ class TcpServer( object ):
             Backup -> sync complete
         '''
         if self.firstCandidateAddr == ' ':
-            self.firstCandidateAddr = address
+            self.firstCandidateAddr = address[ 0 ]
+            self.firstCandidatePort = int( address[ 1 ] )
 
-        self.sendPacket( client, [ address, self.firstCandidateAddr ] )
+        self.sendPacket( client, [ address[ 0 ],
+                                   str( address[ 1 ] ),
+                                   self.firstCandidateAddr,
+                                   str( self.firstCandidatePort ) ] )
         data = self.recvPacket( client, 20 )[ 0 ]
         if data != syncRequestMessage:
             self.handleUnexpectMessage( client, syncRequestMessage, data, clientID, True )
@@ -238,7 +259,8 @@ class TcpServer( object ):
         self.lock.acquire()
         self.sendPacket( client, [ str( self.currentSize ),
                                    str( self.cliqueSize ),
-                                   self.firstCandidateAddr ] )
+                                   self.firstCandidateAddr,
+                                   str( self.firstCandidatePort ) ] )
         self.lock.release()
         data = self.recvPacket( client, 20 )[ 0 ]
 
@@ -275,7 +297,8 @@ class TcpServer( object ):
 
     def handleClientToServer( self, client, address, clientID ):
         self.doLogging( ' is a client', clientID )
-        self.sendPacket( client, [ self.backupAddr,
+        self.sendPacket( client, [ self.firstCandidateAddr,
+                                   str( self.firstCandidatePort ),
                                    str( self.currentSize ),
                                    str( self.cliqueSize ),
                                    self.currentGraph ] )
@@ -310,7 +333,9 @@ class TcpServer( object ):
         if data != exchangeStartMessage:
             self.handleUnexpectMessage( client, exchangeStartMessage, data, clientID )
             return
-        self.sendPacket( client, [ exchangeConfirmedMessage, self.backupAddr ] )
+        self.sendPacket( client, [ exchangeConfirmedMessage,
+                                   self.firstCandidateAddr,
+                                   str( self.firstCandidatePort ) ] )
 
         # check if server and client have the same problem size
         datas = self.recvPacket( client, 45 )

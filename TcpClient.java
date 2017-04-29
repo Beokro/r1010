@@ -36,6 +36,7 @@ public class TcpClient {
     private int cliqueSize = Integer.MAX_VALUE;
     private String currentGraph = " ";
     private String backupAddr = " ";
+    private int backupPort = -1;
     private Socket sock;
     private BufferedReader sockReader;
     private BufferedWriter sockWriter;
@@ -81,6 +82,7 @@ public class TcpClient {
     public void handleStartUp() {
         write( new String[] { clientClaimMessage } );
         backupAddr = read();
+        backupPort = Integer.parseInt( read() );
         currentSize = Integer.parseInt( read() );
         cliqueSize = Integer.parseInt( read() );
         currentGraph = read();
@@ -112,6 +114,7 @@ public class TcpClient {
             return;
         }
         backupAddr = read();
+        backupPort = Integer.parseInt( read() );
         write( new String[] { Integer.toString( currentSize ),
                               Integer.toString( cliqueSize )} );
         message = read();
