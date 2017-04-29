@@ -19,6 +19,8 @@ clientClaimMessage = 'claimClient'
 serverClaimMessage = 'claimServer'
 syncRequestMessage = 'syncReq'
 syncCompleteMessage = 'syncCom'
+firstBackup = 'first'
+normalBackup = 'normal'
 backupSyncTime = 5
 
 
@@ -35,6 +37,7 @@ class TcpServer( object ):
         self.firstCandidatePort = -1
         self.myAddr = ' '
         self.myPort = -1
+        self.firstCandidate = False
         self.lock = threading.Lock()
         self.currentSize = currentSize
         self.currentGraph = ' '
@@ -80,27 +83,28 @@ class TcpServer( object ):
             backupSock.connect( ( self.destHost, self.destPort ) )
         except:
             print 'connect to main server failed'
+            raise Exception( 'main server disconnected' )
             return
         self.handleMainServer( backupSock )
 
     def handleMainServer( self, backupSock ):
+        global firstBackup
         global serverClaimMessage
         global syncRequestMessage
         global syncCompleteMessage
 
-        self.sendPacket( backupSock, [ serverClaimMessage ] )
+        print 'sent my port to server'
+        self.sendPacket( backupSock, [ serverClaimMessage, str( self.port ) ] )
         '''
-            Server -> backup address
-            Server -> backup port
             Server -> address of first candidate
             Server -> port of first candidate
+            Server -> firstBackup / normalBackup
         '''
 
-        data = self.recvPacket( backupSock, 80 )
-        self.myAddr = data[ 0 ]
-        self.myPort = int( data[ 1 ] )
-        self.firstCandidateAddr = data[ 2 ]
-        self.firstCandidatePort = int( data[ 3 ] )
+        data = self.recvPacket( backupSock, 60 )
+        self.firstCandidateAddr = data[ 0 ]
+        self.firstCandidatePort = int( data[ 1 ] )
+        self.firstCandidate = ( data[ 2 ] == firstBackup )
         '''
             Backup -> sync request
             Server -> current size
@@ -124,7 +128,10 @@ class TcpServer( object ):
         self.doLogging( 'First candidate addr = ' + self.firstCandidateAddr +\
                         '  First Candiate port = ' + str( self.firstCandidatePort ),
                         ' ', isServer = True )
-        self.handlePeriodicSync( backupSock )
+        try:
+            self.handlePeriodicSync( backupSock )
+        except:
+            self.handleMainServerDown()
 
     def handlePeriodicSync( self, backupSock ):
         '''
@@ -165,18 +172,50 @@ class TcpServer( object ):
             self.lock.release()
             self.doLogging( 'periodic sync complete', ' ', isServer = True )
 
+    def handleMainServerDown( self ):
+        try:
+            # try to reconnect to server
+            self.lock.release()
+            self.contactMainServer()
+        except:
+            # reconnect to first candidate server this backup is not first candidate
+            self.connectToFirstBackup()
+
+    def connectToFirstBackup( self ):
+        if self.firstCandidate:
+            self.firstCandidateAddr = ' '
+            print 'I am first candidate, wait for client connection'
+            return
+        self.destHost = self.firstCandidateAddr
+        self.destPort = self.firstCandidatePort
+        self.contactMainServer()
     # end of handle server is backup server
- 
+
+
+
+
+
+
+
+
+
+
+
 
     def handleClient( self, client, address, clientID ):
+        print 'here'
         self.doLogging( 'new connection establish', clientID )
         # send my currentSize and graph to the clinet to start the computation
+        print 'require lock'
         self.lock.acquire()
-        data = self.recvPacket( client, 20 )[ 0 ]
-        if data == clientClaimMessage:
+        print 'got my lock'
+        data = self.recvPacket( client, 20 )
+        if data[ 0 ] == clientClaimMessage:
+            print 'it is a client'
             self.handleClientToServer( client, address, clientID )
         else:
-            self.handleServerToServer( client, address, clientID )
+            print 'it is a server'
+            self.handleServerToServer( client, address, clientID, data[ 1 ] )
 
     # ********************************************************
     # *********************************************
@@ -186,30 +225,33 @@ class TcpServer( object ):
     # *************
     # start of handle server to server
 
-    def handleServerToServer( self, client, address, clientID ):
+    def handleServerToServer( self, client, address, clientID, listeningPort ):
         global syncRequestMessage
         global syncCompleteMessage
+        global firstBackup
+        global normalBackup
         self.doLogging( ' is a server', clientID )
         self.lock.release()
         '''
-            Server -> backup ip
-            Server -> backup port
             Server -> address of first candidate
             Server -> port of first candidate
+            Server -> firstBackup / normalBackup
             Backup -> sync request
             Server -> current size
             Server -> clique size
             Server -> current graph
             Backup -> sync complete
         '''
+        firstCandidateResponse = normalBackup
         if self.firstCandidateAddr == ' ':
             self.firstCandidateAddr = address[ 0 ]
-            self.firstCandidatePort = int( address[ 1 ] )
+            self.firstCandidatePort = listeningPort
+            print listeningPort
+            firstCandidateResponse = firstBackup
 
-        self.sendPacket( client, [ address[ 0 ],
-                                   str( address[ 1 ] ),
-                                   self.firstCandidateAddr,
-                                   str( self.firstCandidatePort ) ] )
+        self.sendPacket( client, [ self.firstCandidateAddr,
+                                   str( self.firstCandidatePort ),
+                                        firstCandidateResponse ] )
         data = self.recvPacket( client, 20 )[ 0 ]
         if data != syncRequestMessage:
             self.handleUnexpectMessage( client, syncRequestMessage, data, clientID, True )
@@ -311,7 +353,7 @@ class TcpServer( object ):
                     self.handleClique( data, client, clientID )
                 else:
                     self.doLogging(  'client disconnected', clientID, 'warning' )
-                    raise error( 'Client disconnected' )
+                    raise Exception( 'Client disconnected' )
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split( exc_tb.tb_frame.f_code.co_filename ) [ 1 ]

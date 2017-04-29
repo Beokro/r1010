@@ -79,12 +79,12 @@ Loop Start
 # Server Server Protocl ( Not yet implemented )
 
 Backup -> I am a server
+Backup -> backup listenling port
 
 ## case C if it is first backup server
-            Server -> backup address
-            Server -> backup port
             Server -> address of first candidate
             Server -> port of first candidate
+            Server -> firstBackup / normalBackup
             Backup -> sync request
             Server -> current size
             Server -> clique size
