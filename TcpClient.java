@@ -18,6 +18,9 @@ import java.util.Random;
 // server has a graph that has the same clique size
 // if graph changes, it means either problem size is increased or server sent client
 // a graph with smaller clique
+// default graph from server is all 0's, in this case clique size is meaningless
+// don't call getGraph too often, conversion from intern representation to 2d array
+// might take a long time
 public class TcpClient {
     static final String requestMessage = "request";
     static final String denyMessage = "deny";
