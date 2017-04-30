@@ -40,7 +40,7 @@ class TcpServer( object ):
         self.firstCandidate = False
         self.lock = threading.Lock()
         self.currentSize = currentSize
-        self.currentGraph = ' '
+        self.currentGraph = self.defaultGraph()
         self.cliqueSize = 111111111
         self.counter = 0
         self.sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
@@ -50,6 +50,9 @@ class TcpServer( object ):
                              filename = self.logDir,
                              level = logging.DEBUG )
         self.doLogging( 'server run on address: ' + host + ' port: ' + str( port ), '-1' )
+
+    def defaultGraph( self ):
+        return '0' * ( currentSize * currentSize )
 
     def listen( self ):
         self.sock.listen( 200 )
@@ -433,7 +436,7 @@ class TcpServer( object ):
         # case A_0.1, increment the problem size, include tranmission complete message
         if clientCliqueSize == 0:
             self.currentSize += 1
-            self.currentGraph = ' '
+            self.currentGraph = self.defaultGraph()
             self.cliqueSize = 111111111
             self.doLogging( 'answer found, update problem size', clientID )
             self.cleanLogFile()

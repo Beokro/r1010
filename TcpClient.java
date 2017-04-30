@@ -11,7 +11,7 @@ import java.util.Random;
 
 
 // look at the example at the main
-// bascially call updateFromAlg( int problemSize, int cliqueSize, String graph )
+// bascially call updateFromAlg( int problemSize, int cliqueSize, int[][] graph )
 // whenever coummuncation with server is needed
 // use getCurrentSize, getCliqueSize, getGraph to check on the update from the server
 // if graph does not change, it means server either accept client's graph or
@@ -55,8 +55,8 @@ public class TcpClient {
         return cliqueSize;
     }
 
-    public String getGraph() {
-        return currentGraph;
+    public int[][] getGraph() {
+        return translateGraphToArray( currentGraph );
     }
 
     public boolean connectToHost() {
@@ -94,15 +94,55 @@ public class TcpClient {
     }
 
     // call by algorithm, start the exchange with server
-    public void updateFromAlg( int problemSize, int cliqueSize, String graph ) {
+    // if graph from update is invalid, graph will be empty
+    // the reuslt graph return by getter will be all -1
+    public void updateFromAlg( int problemSize, int cliqueSize, int[][] graph ) {
         this.currentSize = problemSize;
         this.cliqueSize = cliqueSize;
-        this.currentGraph = graph;
+        this.currentGraph = translateGraphToString( graph );
+        // invalid graph
+        if ( currentGraph == " " ) {
+            return;
+        }
         try {
             startExchange();
         } catch( NullPointerException i ) {
             handleReconnect();
         }
+    }
+
+    public String translateGraphToString( int[][] graph ) {
+        int size1 = graph.length;
+        int size2 = 0;
+        StringBuilder message = new StringBuilder();
+
+        if ( size1 == 0 ) {
+            return " ";
+        }
+        size2 = graph[ 0 ].length;
+        for ( int i = 0; i < size1 ; i++ ) {
+            for ( int j = 0; j < size2; j++ ) {
+                message.append( Integer.toString( graph[ i ][ j ] ) );
+            }
+        }
+        return message.toString();
+    }
+
+    public int[][] translateGraphToArray( String graph ) {
+        int[][] message = new int[ currentSize ][ currentSize ];
+        int counter = 0;
+
+        if ( graph.length() != currentSize * currentSize ) {
+            return message;
+        }
+
+        for ( int i = 0; i < currentSize; i++ ) {
+            for ( int j = 0; j < currentSize; j++ ) {
+                message[ i ][ j ] = graph.charAt( counter );
+                counter++;
+            }
+        }
+        return message;
     }
 
     // handle the exchange with server
@@ -244,6 +284,7 @@ public class TcpClient {
         Random rand = new Random();
         int reduce = 0;
         int currentClique = 500;
+        int [][] graph = new int[ 5 ][ 5 ];
         client.run();
         /*
           regualr test
@@ -255,7 +296,7 @@ public class TcpClient {
         client.updateFromAlg( 5, 0, "0000000000000000000000000" );
         client.updateFromAlg( 6, 100, "000000000000000000000000000000000000" );
         */
-        client.updateFromAlg( 5, currentClique, "0000000000000000000000000" );
+        client.updateFromAlg( 5, currentClique, graph );
 
         while ( true ) {
             try{
@@ -268,7 +309,7 @@ public class TcpClient {
             if ( currentClique <= 0 ) {
                 break;
             }
-            client.updateFromAlg( 5, currentClique, "0000000000000000000000000" );
+            client.updateFromAlg( 5, currentClique, graph );
         }
 
         client.close();
