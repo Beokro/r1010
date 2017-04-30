@@ -76,7 +76,7 @@ Loop Start
 * Main server will also send backup servers the ip address and ports of other backup servers. 
 * When backup server connect to main server, it will know if it is the first candidate backup server. If it is not the first candidate, it will connect to first candidate server and treat that as main server
 
-# Server Server Protocl ( Not yet implemented )
+# Server Server Protocl
 
 Backup -> I am a server
 Backup -> backup listenling port
