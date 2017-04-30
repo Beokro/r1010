@@ -4,6 +4,7 @@ import java.io.BufferedWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.IOException;
+import java.lang.NullPointerException;
 import java.net.Socket;
 import java.util.concurrent.TimeUnit;
 import java.util.Random;
@@ -97,7 +98,11 @@ public class TcpClient {
         this.currentSize = problemSize;
         this.cliqueSize = cliqueSize;
         this.currentGraph = graph;
-        startExchange();
+        try {
+            startExchange();
+        } catch( NullPointerException i ) {
+            handleReconnect();
+        }
     }
 
     // handle the exchange with server
@@ -181,6 +186,17 @@ public class TcpClient {
             this.currentGraph = read();
             System.out.println( "server has better clique " + message );
         }
+    }
+
+    public void handleReconnect() {
+        close();
+        // if reconnect to main server failed, connect to backup server instead
+        if ( !connectToHost() ) {
+            destHost = backupAddr;
+            destPort = backupPort;
+            connectToHost();
+        }
+        handleStartUp();
     }
 
     // read from client

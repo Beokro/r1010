@@ -206,9 +206,7 @@ class TcpServer( object ):
         print 'here'
         self.doLogging( 'new connection establish', clientID )
         # send my currentSize and graph to the clinet to start the computation
-        print 'require lock'
         self.lock.acquire()
-        print 'got my lock'
         data = self.recvPacket( client, 20 )
         if data[ 0 ] == clientClaimMessage:
             print 'it is a client'
