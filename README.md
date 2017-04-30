@@ -7,8 +7,9 @@
 4. Be aware that all sequential message is send as a long message separated by '\n'
 
 # Server Client Protocol 
-            Clinet -> I am a client ( Not yet implemented )
-            Server -> backup server addr ( ' ' if none ) ( Not yet implemented )
+            Clinet -> I am a client
+            Server -> backup server addr ( ' ' if none )
+            Server -> backup server port
             Server -> current size
             Server -> clique size
             Server -> current graph
@@ -17,7 +18,8 @@ Loop Start
 
             Client -> exchange start request message
             Server -> exchange start confirmed message
-            Server -> backup server addr ( ' ' if none ) ( Not yet implemented )
+            Server -> backup server addr ( ' ' if none )
+            Server -> backup server port
             Client -> current problem
             Client -> smallest clique size it get
 ## caseA: Client and Server has the same problem size
@@ -77,18 +79,12 @@ Loop Start
 # Server Server Protocl ( Not yet implemented )
 
 Backup -> I am a server
+Backup -> backup listenling port
 
-## caseC if it is first backup server
-            Server -> first candidate message
-            Backup -> sync request
-            Server -> current size
-            Server -> clique size
-            Server -> current graph
-            Backup -> sync complete
-
-## case D if it is not first backup server
-            Server -> not first candidate message
+## case C if it is first backup server
             Server -> address of first candidate
+            Server -> port of first candidate
+            Server -> firstBackup / normalBackup
             Backup -> sync request
             Server -> current size
             Server -> clique size
@@ -99,7 +95,8 @@ Backup -> I am a server
             Backup -> sync request
             Server -> current size
             Server -> clique size
-            Server -> first candidate address 
+            Server -> first candidate address
+            Server -> first candidate port
 
 ### case E main server has better clique or problem size changed
             Backup -> graph request
@@ -109,3 +106,13 @@ Backup -> I am a server
 ### case F clique size and problem size both not change
             Backup -> sync complete
             
+
+# ToDo List
+
+* server side handle restart
+* client side handle restart
+* client side handle main server down
+* first candidate backup server handle main server down
+* other backup server handle main server down
+* all conversion to int might have a error
+* main server handle backup server disconnected
