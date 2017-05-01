@@ -10,7 +10,7 @@ package it.QkCount;
 
 
 
-
+import it.TcpClient;
 import java.Util.Random;
 import java.Util.Set;
 import java.Util.HashSet;
@@ -33,6 +33,9 @@ import com.beust.jcommander.JCommander;
 public class QkCountDriver {
 
     public static double cliqueSize = Double.MAX_VALUE;
+    public static TcpClient client = new TcpClient();
+    public static int vertex1D = 0;
+    public static int vertex2D = 0;
 
 	//IO
 	//public static final String IO_S3_PREFIX = "s3://";
@@ -150,6 +153,10 @@ public class QkCountDriver {
 		return conf.get(QkCountDriver.WORKING_DIR_CONF_KEY) + fileName;
 	}
 	
+    public static int getRandomNeighbor(){
+
+    }
+
     public static void getBestNeighbor(Configuration conf,
                                     CommandCountCliques cCountCliques,
                                     FileSystem fs,
@@ -189,7 +196,7 @@ public class QkCountDriver {
         QkCountDriver.delete(conf, fs, NEIGH1, true);
     }
 
-    public static void countCliques(Configuration conf, 
+    public static int countCliques(Configuration conf, 
                                     CommandCountCliques cCountCliques,
                                     FileSystem fs,
                                     ClockTimeLogger ctlOverall) throws Exception{
@@ -328,7 +335,7 @@ public class QkCountDriver {
                 + res;
 
         QkCountDriver.delete(conf, fs, OUT5, true);
-
+                 
         ctlOverall.logClockTime();
 
     }

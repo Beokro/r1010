@@ -7,7 +7,7 @@
  *  					
 */package it.QkCount;
 
-
+import it.TcpClient;
 import java.io.IOException;
 import java.util.Iterator;
 
@@ -38,8 +38,8 @@ public class Round6 extends AbstractRound implements Tool {
 
 		@Override
 		public void map(Text key,Text value, Context context) throws IOException, InterruptedException {
-			//context.write(new Text ("TotCliques"), value);
-			context.write(key, value);
+			context.write(new Text ("TotCliques"), value);
+			//context.write(key, value);
 
 		}
 	}
@@ -89,11 +89,13 @@ public class Round6 extends AbstractRound implements Tool {
 
 					outKey = "C "+ N_COLORS + " " + CLIQUE_SIZE;
 				} else {
-					outKey = "Node:" + key.toString();
+					outKey = key.toString();
 				}
 			}
-			
-			context.write(new Text (outKey), new Text("Cliques:" + Long.toString(totCliques/*+partialCount*/)));
+            String inputFile = cCountCliques.getFileIn();
+            TcpClient c = QkCountDriver.TcpClient;
+		    QkCountDriver.TcpClient.updateFromAlg(c.currentSize, totCliques);
+			context.write(new Text (outKey), new Text(Long.toString(totCliques/*+partialCount*/)));
 
 		}
 	}
