@@ -15,14 +15,22 @@ class NodeDeg {
         this.degree = degree;
     }
     @Override
-    public boolean equals(Object input) {
-        if(!(input instanceof NodeDeg)) {
+    public boolean equals(Object o) {
+        if(!(o instanceof NodeDeg)) {
             return false;
         }
-        NodeDeg temp = (NodeDeg)input;
+        NodeDeg temp = (NodeDeg)o;
         boolean haha = node == temp.node && degree == temp.degree;
         System.out.println(haha);
         return haha;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 37 * hash + this.node;
+        hash = 37 * hash + this.degree;
+        return hash;
     }
 }
 
@@ -34,12 +42,20 @@ class Edge {
         this.node2 = node2;
     }
     @Override
-    public boolean equals(Object e) {
-        if(!(e instanceof Edge)) {
+    public boolean equals(Object o) {
+        if(!(o instanceof Edge)) {
             return false;
         }
-        Edge temp = (Edge)e;
+        Edge temp = (Edge)o;
         return node1 == temp.node1 && node2 == temp.node2;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 79 * hash + this.node1;
+        hash = 79 * hash + this.node2;
+        return hash;
     }
 }
 
@@ -127,12 +143,14 @@ public class Alg {
         return cliques;
     }
     public static void main( String[] args ) {
-        if(args.length < 2) {
-            System.err.println("Usage: java -jar <jar executable> <destHost> <destPort>");
-            return;
-        }
-        String destHost = args[0];
-        int destPort = Integer.parseInt(args[1]);
+        //if(args.length < 2) {
+        //    System.err.println("Usage: java -jar <jar executable> <destHost> <destPort>");
+        //    return;
+        //}
+        //String destHost = args[0];
+        //int destPort = Integer.parseInt(args[1]);
+        String destHost = "haha";
+        int destPort = 10;
         Alg haha = new Alg(destHost, destPort);
         Alg.graph2d = new int[11][];
         for(int i = 0; i < 11; i++) {
