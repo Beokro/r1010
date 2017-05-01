@@ -501,7 +501,7 @@ class TcpServer( object ):
 
     def cleanLogFile( self ):
         # log file can hold logs for at most 10 problems
-        if self.currentSize % 10 == 0:
+        if self.currentSize % 2 == 0:
             open( self.logDir, 'w' ).close()
 
     def doLogging( self, message, clientID, level = 'info', isServer = False ):
