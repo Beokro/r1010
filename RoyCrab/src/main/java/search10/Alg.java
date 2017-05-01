@@ -3,6 +3,7 @@ import java.util.Deque;
 import java.util.ArrayDeque;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -64,6 +65,32 @@ class OneNeighbor {
     OneNeighbor (NodeDeg node, int neighbor) {
         this.node = node;
         this.neighbor = neighbor;
+    }
+}
+
+class NodeDegPair {
+    NodeDeg node1;
+    NodeDeg node2;
+    NodeDegPair(NodeDeg node1, NodeDeg node2) {
+        this.node1 = node1;
+        this.node2 = node2;
+    } 
+    
+    @Override
+    public boolean equals(Object o) {
+        if(!(o instanceof NodeDegPair)) {
+            return false;
+        }
+        NodeDegPair temp = (NodeDegPair)o;
+        return node1.equals(temp.node1) && node2.equals(temp.node2);
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 67 * hash + Objects.hashCode(this.node1);
+        hash = 67 * hash + Objects.hashCode(this.node2);
+        return hash;
     }
 }
 
