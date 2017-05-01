@@ -21,7 +21,7 @@ syncRequestMessage = 'syncReq'
 syncCompleteMessage = 'syncCom'
 firstBackup = 'first'
 normalBackup = 'normal'
-backupSyncTime = 5
+backupSyncTime = 120
 
 
 class TcpServer( object ):
