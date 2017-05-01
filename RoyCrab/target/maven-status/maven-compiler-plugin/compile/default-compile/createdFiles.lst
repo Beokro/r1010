@@ -3,6 +3,7 @@ search10/Round4Red.class
 search10/RoundFactory.class
 search10/Round1Map.class
 search10/AdjListGraph.class
+search10/OneNeighbor.class
 search10/AdjListGraph$AdjListGraphNodeComparator.class
 search10/Round3Red.class
 search10/Checker.class

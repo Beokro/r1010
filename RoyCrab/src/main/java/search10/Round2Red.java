@@ -35,6 +35,10 @@ public class Round2Red extends Thread {
             int degree = neighbors.size();
             for(NodeDeg neighbor : neighbors) {
                 if(Alg.doubleCheck(node, degree, neighbor.node, neighbor.degree)) {
+                    //System.out.println(Integer.toString(node) + " " + 
+                    //        Integer.toString(degree) + " " +
+                    //        Integer.toString(neighbor.node) + " " +
+                    //        Integer.toString(neighbor.degree));
                     result.put(new NodeDeg(node, degree), neighbor);
                     save.put(new NodeDeg(node, degree), neighbor);
                 }

@@ -9,7 +9,7 @@ import java.util.Map;
 
 public class Round2Map extends Thread {
     
-    public static ConcurrentMap<NodeDeg, Integer> input;
+    public static BlockingQueue<OneNeighbor> input;
     public static ConcurrentMap<Integer, List<NodeDeg>> result;
     private static Object firstlock;
     private static Object secondlock;
@@ -23,21 +23,18 @@ public class Round2Map extends Thread {
 
     public void run() {
         while(!input.isEmpty()) {
-            Map.Entry<NodeDeg, Integer> entry = null;
-            synchronized(firstlock) {
-                if(input.isEmpty()) {
-                    break;
-                }
-                entry = input.entrySet().iterator().next();
-                input.remove(entry.getKey());
+            OneNeighbor one = null;
+            one = input .poll();
+            if(one == null) {
+                break;
             }
-            NodeDeg node = entry.getKey();
-            int degree = entry.getValue();
+            NodeDeg node = one.node;
+            int neighbor = one.neighbor;
             synchronized(secondlock) {
-                if(!result.containsKey(degree)) {
-                    result.put(degree, new ArrayList<NodeDeg>());
+                if(!result.containsKey(neighbor)) {
+                    result.put(neighbor, new ArrayList<NodeDeg>());
                 }
-                result.get(degree).add(node);
+                result.get(neighbor).add(node);
             }
         }
     }

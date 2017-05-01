@@ -14,8 +14,15 @@ class NodeDeg {
         this.node = node;
         this.degree = degree;
     }
-    public boolean equals(NodeDeg input) {
-        return node == input.node && degree == input.degree;
+    @Override
+    public boolean equals(Object input) {
+        if(!(input instanceof NodeDeg)) {
+            return false;
+        }
+        NodeDeg temp = (NodeDeg)input;
+        boolean haha = node == temp.node && degree == temp.degree;
+        System.out.println(haha);
+        return haha;
     }
 }
 
@@ -26,8 +33,22 @@ class Edge {
         this.node1 = node1;
         this.node2 = node2;
     }
-    public boolean equals(Edge e) {
-        return node1 == e.node1 && node2 == e.node2;
+    @Override
+    public boolean equals(Object e) {
+        if(!(e instanceof Edge)) {
+            return false;
+        }
+        Edge temp = (Edge)e;
+        return node1 == temp.node1 && node2 == temp.node2;
+    }
+}
+
+class OneNeighbor {
+    NodeDeg node;
+    int neighbor;
+    OneNeighbor (NodeDeg node, int neighbor) {
+        this.node = node;
+        this.neighbor = neighbor;
     }
 }
 
@@ -38,11 +59,12 @@ public class Alg {
 
     Alg(String destHost, int destPort) {
         client = new TcpClient(destHost, destPort);
-        graph2d = client.getGraph();
     }
 
     private static void createGraph() {
         int size = client.getCurrentSize();
+        Round1Map.graph = new LinkedBlockingQueue<>();
+        size = 11;
         for(int i = 0; i < size; i++) {
             for(int j = i + 1; j < size; j++) {
                 if(graph2d[i][j] == 1) {
@@ -112,5 +134,16 @@ public class Alg {
         String destHost = args[0];
         int destPort = Integer.parseInt(args[1]);
         Alg haha = new Alg(destHost, destPort);
+        Alg.graph2d = new int[11][];
+        for(int i = 0; i < 11; i++) {
+            Alg.graph2d[i] = new int[11];
+        }
+        for(int i = 0; i < 11; i++) {
+            for(int j = 0; j < 11; j++) {
+                Alg.graph2d[i][j] = 1;
+            }
+        }
+        Alg.createGraph();
+        System.out.println(haha.countCliques());
     }
 }
