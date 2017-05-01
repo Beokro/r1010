@@ -183,7 +183,7 @@ public class Alg {
         }
         for(int i = 0; i < 11; i++) {
             for(int j = 0; j < 11; j++) {
-                Alg.graph2d[i][j] = 1;
+                Alg.graph2d[i][j] = 0;
             }
         }
         Alg.createGraph();

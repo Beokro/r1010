@@ -56,15 +56,18 @@ public class Round4Map extends Thread {
                 for(int j = i + 1; j < entry.getValue().size(); j++) {
                     NodeDeg node1 = entry.getValue().get(i);
                     NodeDeg node2 = entry.getValue().get(j);
+                    Edge newEdge = null;
                     if(Alg.doubleCheck(node1.node, 
                                         node1.degree, node2.node, node2.degree)) {
-                        Edge newEdge = new Edge(node1.node, node2.node);
-                        synchronized(secondlock) {
-                            if(!result.containsKey(newEdge)) {
-                                result.put(newEdge, new HashSet<Integer>());
-                            }
-                            result.get(newEdge).add(entry.getKey().node);
+                        newEdge = new Edge(node1.node, node2.node);
+                    } else {
+                        newEdge = new Edge(node2.node, node1.node);
+                    }
+                    synchronized(secondlock) {
+                        if(!result.containsKey(newEdge)) {
+                            result.put(newEdge, new HashSet<Integer>());
                         }
+                        result.get(newEdge).add(entry.getKey().node);
                     }
                 }
             }

@@ -31,6 +31,8 @@ public class Round5Red extends Thread {
             AdjListGraph g = new AdjListGraph();
             for(Edge edge : entry.getValue()) {
                 g.addEdge(Integer.toString(edge.node1), Integer.toString(edge.node2));
+            //    System.out.println(Integer.toString(edge.node1) + " " +
+            //            Integer.toString(edge.node2));
             }
             long cliquesL = g.countCliquesOfSize(9);
             int cliques;
