@@ -33,6 +33,7 @@ public class Round3Map extends Thread {
                 if(!result.containsKey(node)) {
                     result.put(node, new ArrayList<NodeDeg>());
                 }
+                List<NodeDeg> haha = result.get(node);
                 result.get(node).add(neighbor);
             }
         }

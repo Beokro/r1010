@@ -1,8 +1,9 @@
 package search10;
-import java.util.Deque;
-import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.BlockingQueue;
@@ -95,7 +96,7 @@ class NodeDegPair {
 
 public class Alg {
     public static TcpClient client;
-    public static Deque<Edge> graph = new ArrayDeque<>();
+    public static List<Edge> graph = new ArrayList<>();
     public static int[][] graph2d;
 
     Alg(String destHost, int destPort) {
@@ -103,9 +104,8 @@ public class Alg {
     }
 
     private static void createGraph() {
-        int size = client.getCurrentSize();
+        int size = graph2d.length;
         Round1Map.graph = new LinkedBlockingQueue<>();
-        size = 11;
         for(int i = 0; i < size; i++) {
             for(int j = i + 1; j < size; j++) {
                 if(graph2d[i][j] == 1) {
@@ -130,27 +130,45 @@ public class Alg {
     }
 
     private void runRound(int round, int cores) {
-        Deque<Thread> threads = new ArrayDeque<Thread>();
-        for(int i = 0; i < cores; i++) {
+        List<Thread> threads = new LinkedList<Thread>();
+        int workers = 2*cores;
+        for(int i = 0; i < workers; i++) {
             MapRed thisRound = RoundFactory.makeRound(round);
-            threads.addFirst(thisRound.map);
-            threads.addLast(thisRound.reduce);
+            threads.add(0, thisRound.map);
+            threads.add(thisRound.reduce);
         }
-        for(Thread thread : threads) {
-            thread.start();
+        
+        // start maps
+        for(int i = 0; i < workers; i++) {
+            threads.get(i).start();
         }
-        for(Thread thread : threads) {
-            try {
-                thread.join();
+        //end maps
+        for(int i = 0; i < workers; i++) {
+           try {
+                threads.get(i).join();
             } catch(InterruptedException e) {
                 e.printStackTrace();
-            }
+            } 
         }
+        
+        // start reds
+        for(int i = 2*workers - 1; i >= workers; i--) {
+            Thread t = threads.get(i);
+            threads.get(i).start();
+        }
+        //end reds
+        for(int i = 2*workers - 1; i >= 0; i--) {
+           try {
+                threads.get(i).join();
+            } catch(InterruptedException e) {
+                e.printStackTrace();
+            } 
+        }
+        
     }
 
     private int countCliques() {
         int cores = Runtime.getRuntime().availableProcessors();
-
         // something to setup Round1Map.graph
         runRound(1, cores); 
         runRound(2, cores); 
