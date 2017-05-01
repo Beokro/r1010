@@ -265,7 +265,7 @@ public class Alg {
             }                                                                 
             if(current <= cliques) {                                          
                 if(current <= cliques / 2 || current < 10) {
-                    updateFromAlg(currentSize, current, graph2d);
+                    client.updateFromAlg(currentSize, current, graph2d);
                 }
                 cliques = current;                                            
             } else {                                                          
@@ -283,13 +283,8 @@ public class Alg {
     }
 
     public static void main( String[] args ) {
-        if(args.length < 2) {
-            System.err.println("Usage: java -jar <jar executable> <destHost> <destPort>");
-            return;
-        }
-        String destHost = args[0];
-        int destPort = Integer.parseInt(args[1]);
-        Alg haha = new Alg(destHost, destPort);
+        
+        Alg haha = new Alg("98.185.210.172", 7788);
 
         haha.start();
     }
