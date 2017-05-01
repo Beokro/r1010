@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 class NodeDeg {
     int node;
@@ -32,8 +33,29 @@ class Edge {
 
 public class Alg {
     public static TcpClient client;
-    public static BlockingQueue<Edge> graph;
-    
+    public static Deque<Edge> graph = new ArrayDeque<>();
+    public static int[][] graph2d;
+
+    Alg(String destHost, int destPort) {
+        client = new TcpClient(destHost, destPort);
+        graph2d = client.getGraph();
+    }
+
+    private static void createGraph() {
+        int size = client.getCurrentSize();
+        for(int i = 0; i < size; i++) {
+            for(int j = i + 1; j < size; j++) {
+                if(graph2d[i][j] == 1) {
+                    graph.add(new Edge(i, j));
+                    Round1Map.graph.offer(new Edge(i, j));
+                } else {
+                    graph.add(new Edge(i + size, j + size));
+                    Round1Map.graph.offer(new Edge(i + size, j + size));
+                }
+            }
+        }
+    }
+
     public static boolean doubleCheck(int node1, int degree1, int node2, int degree2) {
         if(degree1 < degree2) {
             return true;
@@ -83,6 +105,12 @@ public class Alg {
         return cliques;
     }
     public static void main( String[] args ) {
-
+        if(args.length < 2) {
+            System.err.println("Usage: java -jar <jar executable> <destHost> <destPort>");
+            return;
+        }
+        String destHost = args[0];
+        int destPort = Integer.parseInt(args[1]);
+        Alg haha = new Alg(destHost, destPort);
     }
 }
