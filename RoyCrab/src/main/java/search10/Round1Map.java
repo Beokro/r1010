@@ -8,6 +8,7 @@ import java.util.ArrayList;
 public class Round1Map extends Thread {
     
     public static BlockingQueue<Edge> graph;
+    public static BlockingQueue<Edge> save = new BlockingQueue<>();
     public static ConcurrentMap<Integer, List<Integer>> result;
     private static Object lock;
 
@@ -23,6 +24,7 @@ public class Round1Map extends Thread {
             if(edge == null) {
                 break;
             }
+            save.add(edge);
             int node1 = edge.node1;
             int node2 = edge.node2;
             synchronized(lock) {
