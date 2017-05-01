@@ -2,32 +2,39 @@ package search10;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.BlockingQueue;
+import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
 
 public class Round1Map extends Thread {
     
-    public static BlockingQueue<Edge> graph;
-    public static BlockingQueue<Edge> save = new BlockingQueue<>();
+    public static ConcurrentMap<Integer, Edge> graph;
+    public static ConcurrentMap<Integer, Edge> save = new ConcurrentHashMap<>();
     public static ConcurrentMap<Integer, List<Integer>> result;
-    private static Object lock;
+    private static Object firstlock;
+    private static Object secondlock;
 
     Round1Map() {
         result = new ConcurrentHashMap<>();
-        lock = new Object();
+        firstlock = new Object();
+        secondlock = new Object();
     }
 
     public void run() {
         while(!graph.isEmpty()) {
-            Edge edge = null;
-            edge = graph.poll();
-            if(edge == null) {
-                break;
+            Map.Entry<Integer, Edge> entry = null;
+            synchronized(firstlock) {
+                if(graph.isEmpty()) {
+                    break;
+                }
+                entry = graph.entrySet().iterator().next();
+                graph.remove(entry.getKey());
             }
-            save.add(edge);
+            Edge edge = entry.getValue();
+            save.put(entry.getKey(), entry.getValue());
             int node1 = edge.node1;
             int node2 = edge.node2;
-            synchronized(lock) {
+            synchronized(secondlock) {
                 if(!result.containsKey(node1)) {
                     result.put(node1, new ArrayList<Integer>());
                 }

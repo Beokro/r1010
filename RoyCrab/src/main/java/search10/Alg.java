@@ -1,8 +1,11 @@
 package search10;
 import java.util.ArrayList;
 import java.util.LinkedList;
-import java.util.BlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -97,9 +100,12 @@ class NodeDegPair {
 public class Alg {
     public static TcpClient client;
     public static List<Edge> graph = new ArrayList<>();
-    public static int[][] graph2d;
+    public int[][] graph2d;
     private int currentSize;
     private int change = -1;
+    Set<Integer> tabuSet = new HashSet<>();                                
+    List<Integer> tabuList = new LinkedList<>();                           
+    int TABU_CAP;
 
     Alg(String destHost, int destPort) {
         client = new TcpClient(destHost, destPort);
@@ -114,35 +120,63 @@ public class Alg {
         }
     }
 
-    private static int getBestNeighbor() {
+    private void updateTabu() {
+        tabuList.add(change);
+        tabuSet.add(change);
+        change = -1;
+        if(tabuSet.size() > TABU_CAP) {
+            int toDelete = tabuList.get(0);
+            tabuList.remove(0);
+            tabuSet.remove(toDelete);
+        }
 
     }
+    private int getBestNeighbor() {
+        int change = -1;
+        int min = Integer.MAX_VALUE;
+        for(int i = 0; i < graph.size(); i++) {
+            change = i;
+            Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
+            int current = countCliques();
+            Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
+            if(current < min) {
+                min = current;
+                this.change = change;
+            }
+        }
+        Round1Map.graph.put(this.change, flip(Round1Map.graph.get(this.change))); 
+        return min;
+    }
 
-    private static int getRandomNeighbor() {
+    private int getRandomNeighbor() {
         Random rand = new Random(System.currentTimeMillis());             
-        int change = rand.nextInt(currentSize());
+        int change = rand.nextInt(graph.size());
         while(tabuSet.contains(change)) {
-            change = rand.nextInt(currentSize());
+            change = rand.nextInt(currentSize);
         }
         this.change = change;
-        Round1Map.graph.set(change, flip(Round1Map.graph.get(change)));
+        Round1Map.graph.put(change, flip(Round1Map.graph.get(change)));
         return countCliques();
     }
 
-    private static void createGraph() {
+    private void createGraph() {
         int size = graph2d.length;
-        Round1Map.graph = new LinkedBlockingQueue<>();
+        Round1Map.graph = new ConcurrentHashMap<>();
+        Round1Map.save = Round1Map.graph;
+        int count = 0;
         for(int i = 0; i < size; i++) {
             for(int j = i + 1; j < size; j++) {
                 if(graph2d[i][j] == 1) {
                     graph.add(new Edge(i, j));
-                    Round1Map.save.offer(new Edge(i, j));
+                    Round1Map.save.put(count, new Edge(i, j));
                 } else {
                     graph.add(new Edge(i + size, j + size));
-                    Round1Map.save.offer(new Edge(i + size, j + size));
+                    Round1Map.save.put(count, new Edge(i + size, j + size));
                 }
+                count += 1;
             }
         }
+        TABU_CAP = graph.size() / 4;
     }
 
     public static boolean doubleCheck(int node1, int degree1, int node2, int degree2) {
@@ -209,54 +243,54 @@ public class Alg {
         }
         return cliques;
     }
-    public static void main( String[] args ) {
-        //if(args.length < 2) {
-        //    System.err.println("Usage: java -jar <jar executable> <destHost> <destPort>");
-        //    return;
-        //}
-        //String destHost = args[0];
-        //int destPort = Integer.parseInt(args[1]);
-        String destHost = "haha";
-        int destPort = 10;
-        Alg haha = new Alg(destHost, destPort);
-        Alg.graph2d = new int[13][];
-        for(int i = 0; i < 13; i++) {
-            Alg.graph2d[i] = new int[13];
-        }
-        for(int i = 0; i < 13; i++) {
-            for(int j = 0; j < 13; j++) {
-                Alg.graph2d[i][j] = 0;
-            }
-        }
-        Alg.createGraph();
+
+    public void start() {
 
         int t0 = 5, t1 = 10000;                                                
         int cliques = countCliques();
-        int TABU_CAP = Math.pow(currentSize(), 2);
-        int tabuSize = 0;                                                     
         int current = Integer.MAX_VALUE;                                      
-        Set<Integer> tabuSet = new HashSet<>();                                
-        List<Integer> tabuList = new LinkedList<>();                           
         Random rand = new Random(System.currentTimeMillis());             
+
+        client.run();
+        graph2d = client.getGraph();
+        createGraph();
+
         while(cliques != 0) {                                                 
             int n = rand.nextInt(1);                                          
-            if(n == 0) {                                                      
+            if(n == 0) {
                 current = getRandomNeighbor();
             } else {                                                          
                 current = getBestNeighbor();                                  
+                graph.set(this.change, flip(graph.get(this.change))); 
             }                                                                 
             if(current <= cliques) {                                          
+                if(current <= cliques / 2 || current < 10) {
+                    updateFromAlg(currentSize, current, graph2d);
+                }
                 cliques = current;                                            
             } else {                                                          
                 double prob =                                                 
-                    Math.power(Math.E, ((double)(current - cliques))/((double)t1));
-                if(prob - rand.nextDouble() >= 0.0001) {                      
-                    cliques = current;                                        
+                    Math.pow(Math.E, ((double)(current - cliques))/((double)t1));
+                if(prob - rand.nextDouble() >= 0.0000001) {                      
+                    cliques = current;
+                    graph.set(this.change, flip(graph.get(this.change))); 
                 }                                                             
-                t1 -= 1;                                                      
-                t1 = Math.min(t1, t0);                                        
+                t1 -= 1;
+                t1 = Math.min(t1, t0);
             }                                                                 
-            updateTabu(tabuSet, tabuList);                                    
+            updateTabu();
         }   
+    }
+
+    public static void main( String[] args ) {
+        if(args.length < 2) {
+            System.err.println("Usage: java -jar <jar executable> <destHost> <destPort>");
+            return;
+        }
+        String destHost = args[0];
+        int destPort = Integer.parseInt(args[1]);
+        Alg haha = new Alg(destHost, destPort);
+
+        haha.start();
     }
 }
