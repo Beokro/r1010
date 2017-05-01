@@ -109,6 +109,7 @@ public class Alg {
 
     Alg(String destHost, int destPort) {
         client = new TcpClient(destHost, destPort);
+        client.run();
         currentSize = client.getCurrentSize();
     }
 
@@ -131,6 +132,17 @@ public class Alg {
         }
 
     }
+    
+    private void accept() {
+        Round1Map.graph.put(this.change, flip(Round1Map.graph.get(this.change))); 
+        Edge temp = graph.get(this.change);
+        if(temp.node1 >= currentSize) {
+            temp = flip(temp);
+        }
+        graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
+        graph.set(change, temp);
+    }
+    
     private int getBestNeighbor() {
         int change = -1;
         int min = Integer.MAX_VALUE;
@@ -142,9 +154,11 @@ public class Alg {
             if(current < min) {
                 min = current;
                 this.change = change;
+                if(min == 0) {
+                    break;
+                }
             }
         }
-        Round1Map.graph.put(this.change, flip(Round1Map.graph.get(this.change))); 
         return min;
     }
 
@@ -156,22 +170,23 @@ public class Alg {
         }
         this.change = change;
         Round1Map.graph.put(change, flip(Round1Map.graph.get(change)));
-        return countCliques();
+        int result = countCliques();
+        Round1Map.graph.put(change, flip(Round1Map.graph.get(change)));
+        return result;
     }
 
     private void createGraph() {
         int size = graph2d.length;
         Round1Map.graph = new ConcurrentHashMap<>();
-        Round1Map.save = Round1Map.graph;
         int count = 0;
         for(int i = 0; i < size; i++) {
             for(int j = i + 1; j < size; j++) {
                 if(graph2d[i][j] == 1) {
                     graph.add(new Edge(i, j));
-                    Round1Map.save.put(count, new Edge(i, j));
+                    Round1Map.graph.put(count, new Edge(i, j));
                 } else {
                     graph.add(new Edge(i + size, j + size));
-                    Round1Map.save.put(count, new Edge(i + size, j + size));
+                    Round1Map.graph.put(count, new Edge(i + size, j + size));
                 }
                 count += 1;
             }
@@ -189,7 +204,7 @@ public class Alg {
     private void runRound(int round, int cores) {
         List<Thread> mappers = new ArrayList<>();
         List<Thread> reducers = new ArrayList<>();
-        int workers = 2*cores;
+        int workers = 1;
         for(int i = 0; i < workers; i++) {
             MapRed thisRound = RoundFactory.makeRound(round);
             mappers.add(0, thisRound.map);
@@ -226,9 +241,9 @@ public class Alg {
 
     private int countCliques() {
         int cores = Runtime.getRuntime().availableProcessors();
-        Round1Map.graph = Round1Map.save;
         runRound(1, cores); 
         Round1Map.graph = Round1Map.save;
+        Round1Map.save = new ConcurrentHashMap<>();
         runRound(2, cores); 
         runRound(3, cores); 
         runRound(4, cores); 
@@ -246,38 +261,39 @@ public class Alg {
 
     public void start() {
 
-        int t0 = 5, t1 = 10000;                                                
-        int cliques = countCliques();
-        int current = Integer.MAX_VALUE;                                      
-        Random rand = new Random(System.currentTimeMillis());             
-
-        client.run();
+        int t0 = 5, t1 = 10000;
         graph2d = client.getGraph();
         createGraph();
+        int cliques = countCliques();
+        int current = Integer.MAX_VALUE;                                      
+        Random rand = new Random(System.currentTimeMillis());
 
         while(cliques != 0) {                                                 
-            int n = rand.nextInt(1);                                          
+            int n = rand.nextInt(2);                                          
             if(n == 0) {
                 current = getRandomNeighbor();
+                if(current < cliques) { 
+                    accept();
+                    if(current <= cliques / 2 || current < 10) {
+                        client.updateFromAlg(currentSize, current, graph2d);
+                    }
+                    cliques = current;                                            
+                } else {                                                          
+                    double prob =                                                 
+                        Math.pow(Math.E, ((double)(current - cliques))/((double)t1));
+                    if(prob - rand.nextDouble() >= 0.0000001) { 
+                        accept();
+                        cliques = current;
+                    }                                                             
+                    t1 -= 1;
+                    t1 = Math.min(t1, t0);
+                }  
             } else {                                                          
-                current = getBestNeighbor();                                  
-                graph.set(this.change, flip(graph.get(this.change))); 
-            }                                                                 
-            if(current <= cliques) {                                          
-                if(current <= cliques / 2 || current < 10) {
-                    client.updateFromAlg(currentSize, current, graph2d);
-                }
-                cliques = current;                                            
-            } else {                                                          
-                double prob =                                                 
-                    Math.pow(Math.E, ((double)(current - cliques))/((double)t1));
-                if(prob - rand.nextDouble() >= 0.0000001) {                      
-                    cliques = current;
-                    graph.set(this.change, flip(graph.get(this.change))); 
-                }                                                             
-                t1 -= 1;
-                t1 = Math.min(t1, t0);
-            }                                                                 
+                current = getBestNeighbor();
+                accept();
+            }  
+            this.change = -1;
+                                                                           
             updateTabu();
         }   
     }
