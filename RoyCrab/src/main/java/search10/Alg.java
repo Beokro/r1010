@@ -21,7 +21,6 @@ class NodeDeg {
         }
         NodeDeg temp = (NodeDeg)o;
         boolean haha = node == temp.node && degree == temp.degree;
-        System.out.println(haha);
         return haha;
     }
 

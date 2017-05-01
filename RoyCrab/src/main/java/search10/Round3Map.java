@@ -34,11 +34,6 @@ public class Round3Map extends Thread {
             NodeDeg neighbor = entry.getValue();
             synchronized(secondlock) {
                 if(!result.containsKey(node)) {
-                    if(node.node == 0) {
-                        System.out.println(node.node);
-                        System.out.println(node.degree);
-                        System.out.println("");
-                    }
                     result.put(node, new ArrayList<NodeDeg>());
                 }
                 result.get(node).add(neighbor);
