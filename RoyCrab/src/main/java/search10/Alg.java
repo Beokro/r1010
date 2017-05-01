@@ -28,8 +28,7 @@ class NodeDeg {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 37 * hash + this.node;
-        hash = 37 * hash + this.degree;
+        hash = 37 * hash + this.node; hash = 37 * hash + this.degree;
         return hash;
     }
 }
@@ -160,7 +159,7 @@ public class Alg {
         runRound(5, cores); 
         int cliques = 0;
         for(int i : Round5Red.result.values()) {
-            if(cliques < cliques + i) {
+            if(cliques > cliques + i) {
                 return Integer.MAX_VALUE;
             } else {
                 cliques += i;

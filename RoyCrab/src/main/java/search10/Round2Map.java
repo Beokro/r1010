@@ -24,7 +24,7 @@ public class Round2Map extends Thread {
     public void run() {
         while(!input.isEmpty()) {
             OneNeighbor one = null;
-            one = input .poll();
+            one = input.poll();
             if(one == null) {
                 break;
             }
