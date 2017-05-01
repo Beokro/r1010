@@ -3,6 +3,7 @@ import java.util.Deque;
 import java.util.ArrayDeque;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -14,8 +15,21 @@ class NodeDeg {
         this.node = node;
         this.degree = degree;
     }
-    public boolean equals(NodeDeg input) {
-        return node == input.node && degree == input.degree;
+    @Override
+    public boolean equals(Object o) {
+        if(!(o instanceof NodeDeg)) {
+            return false;
+        }
+        NodeDeg temp = (NodeDeg)o;
+        boolean haha = node == temp.node && degree == temp.degree;
+        return haha;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 37 * hash + this.node; hash = 37 * hash + this.degree;
+        return hash;
     }
 }
 
@@ -26,8 +40,56 @@ class Edge {
         this.node1 = node1;
         this.node2 = node2;
     }
-    public boolean equals(Edge e) {
-        return node1 == e.node1 && node2 == e.node2;
+    @Override
+    public boolean equals(Object o) {
+        if(!(o instanceof Edge)) {
+            return false;
+        }
+        Edge temp = (Edge)o;
+        return node1 == temp.node1 && node2 == temp.node2;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 79 * hash + this.node1;
+        hash = 79 * hash + this.node2;
+        return hash;
+    }
+}
+
+class OneNeighbor {
+    NodeDeg node;
+    int neighbor;
+    OneNeighbor (NodeDeg node, int neighbor) {
+        this.node = node;
+        this.neighbor = neighbor;
+    }
+}
+
+class NodeDegPair {
+    NodeDeg node1;
+    NodeDeg node2;
+    NodeDegPair(NodeDeg node1, NodeDeg node2) {
+        this.node1 = node1;
+        this.node2 = node2;
+    } 
+    
+    @Override
+    public boolean equals(Object o) {
+        if(!(o instanceof NodeDegPair)) {
+            return false;
+        }
+        NodeDegPair temp = (NodeDegPair)o;
+        return node1.equals(temp.node1) && node2.equals(temp.node2);
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 67 * hash + Objects.hashCode(this.node1);
+        hash = 67 * hash + Objects.hashCode(this.node2);
+        return hash;
     }
 }
 
@@ -38,11 +100,12 @@ public class Alg {
 
     Alg(String destHost, int destPort) {
         client = new TcpClient(destHost, destPort);
-        graph2d = client.getGraph();
     }
 
     private static void createGraph() {
         int size = client.getCurrentSize();
+        Round1Map.graph = new LinkedBlockingQueue<>();
+        size = 11;
         for(int i = 0; i < size; i++) {
             for(int j = i + 1; j < size; j++) {
                 if(graph2d[i][j] == 1) {
@@ -96,7 +159,7 @@ public class Alg {
         runRound(5, cores); 
         int cliques = 0;
         for(int i : Round5Red.result.values()) {
-            if(cliques < cliques + i) {
+            if(cliques > cliques + i) {
                 return Integer.MAX_VALUE;
             } else {
                 cliques += i;
@@ -105,12 +168,25 @@ public class Alg {
         return cliques;
     }
     public static void main( String[] args ) {
-        if(args.length < 2) {
-            System.err.println("Usage: java -jar <jar executable> <destHost> <destPort>");
-            return;
-        }
-        String destHost = args[0];
-        int destPort = Integer.parseInt(args[1]);
+        //if(args.length < 2) {
+        //    System.err.println("Usage: java -jar <jar executable> <destHost> <destPort>");
+        //    return;
+        //}
+        //String destHost = args[0];
+        //int destPort = Integer.parseInt(args[1]);
+        String destHost = "haha";
+        int destPort = 10;
         Alg haha = new Alg(destHost, destPort);
+        Alg.graph2d = new int[11][];
+        for(int i = 0; i < 11; i++) {
+            Alg.graph2d[i] = new int[11];
+        }
+        for(int i = 0; i < 11; i++) {
+            for(int j = 0; j < 11; j++) {
+                Alg.graph2d[i][j] = 1;
+            }
+        }
+        Alg.createGraph();
+        System.out.println(haha.countCliques());
     }
 }

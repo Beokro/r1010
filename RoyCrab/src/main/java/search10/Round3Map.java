@@ -9,7 +9,7 @@ import java.util.Map;
 
 public class Round3Map extends Thread {
     
-    public static ConcurrentMap<NodeDeg, NodeDeg> input;
+    public static BlockingQueue<NodeDegPair> input;
     public static ConcurrentMap<NodeDeg, List<NodeDeg>> result;
     private static Object firstlock;
     private static Object secondlock;
@@ -22,16 +22,13 @@ public class Round3Map extends Thread {
     }
     public void run() {
         while(!input.isEmpty()) {
-            Map.Entry<NodeDeg, NodeDeg> entry = null;
-            synchronized(firstlock) {
-                if(input.isEmpty()) {
-                    break;
-                }
-                entry = input.entrySet().iterator().next();
-                input.remove(entry.getKey());
+            NodeDegPair one = null;
+            one = input.poll();
+            if(one == null) {
+                break;
             }
-            NodeDeg node = entry.getKey();
-            NodeDeg neighbor = entry.getValue();
+            NodeDeg node = one.node1;
+            NodeDeg neighbor = one.node2;
             synchronized(secondlock) {
                 if(!result.containsKey(node)) {
                     result.put(node, new ArrayList<NodeDeg>());

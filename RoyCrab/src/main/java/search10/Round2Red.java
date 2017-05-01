@@ -2,21 +2,22 @@ package search10;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.List;
 import java.util.Map;
 
 
 public class Round2Red extends Thread {
     
-    public static ConcurrentMap<Integer, List<NodeDeg>> input = Round2Map.result;
-    public static ConcurrentMap<NodeDeg, NodeDeg> result;
-    public static ConcurrentMap<NodeDeg, NodeDeg> save;
+    public static ConcurrentMap<Integer, List<NodeDeg>> input;
+    public static BlockingQueue<NodeDegPair> result;
+    public static BlockingQueue<NodeDegPair> save;
     private static Object lock;
 
     Round2Red() {
         input = Round2Map.result;
-        result = new ConcurrentHashMap<>();
-        save = new ConcurrentHashMap<>();
+        result = new LinkedBlockingQueue<>();
+        save = new LinkedBlockingQueue<>();
         lock = new Object();
     }
 
@@ -35,8 +36,10 @@ public class Round2Red extends Thread {
             int degree = neighbors.size();
             for(NodeDeg neighbor : neighbors) {
                 if(Alg.doubleCheck(node, degree, neighbor.node, neighbor.degree)) {
-                    result.put(new NodeDeg(node, degree), neighbor);
-                    save.put(new NodeDeg(node, degree), neighbor);
+                    NodeDeg temp = new NodeDeg(node, degree);
+                    NodeDegPair insert = new NodeDegPair(temp, neighbor);
+                    result.add(insert);
+                    save.add(insert);
                 }
             }
         }

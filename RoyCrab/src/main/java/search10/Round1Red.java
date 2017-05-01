@@ -2,19 +2,20 @@ package search10;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.List;
 import java.util.Map;
 
 public class Round1Red extends Thread {
     
     public static ConcurrentMap<Integer, List<Integer>> input;
-    public static ConcurrentMap<NodeDeg, Integer> result;
+    public static BlockingQueue<OneNeighbor> result;
     public static Object lock;
 
     Round1Red() {
         lock = new Object();
         input = Round1Map.result;
-        result = new ConcurrentHashMap<>();
+        result = new LinkedBlockingQueue<>();
     }
 
     public void run() {
@@ -32,9 +33,7 @@ public class Round1Red extends Thread {
             List<Integer> neighbors = entry.getValue();
             NodeDeg node = new NodeDeg(nodeNum, neighbors.size());
             for(int neighbor : neighbors) {
-                if(!result.containsKey(node)) {
-                    result.put(node, neighbor);
-                }
+                result.add(new OneNeighbor(node, neighbor));
             }
         }
     }

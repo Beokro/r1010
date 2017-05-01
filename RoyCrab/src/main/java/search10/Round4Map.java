@@ -12,7 +12,7 @@ import java.util.Map;
 public class Round4Map extends Thread {
     
     public static ConcurrentMap<NodeDeg, List<NodeDeg>> withNeighbors;
-    public static ConcurrentMap<NodeDeg, NodeDeg> edges;
+    public static BlockingQueue<NodeDegPair> edges;
     public static ConcurrentMap<Edge, Set<Integer>> result;
     private static Object firstlock;
     private static Object secondlock;
@@ -26,16 +26,13 @@ public class Round4Map extends Thread {
     }
     public void run() {
         while(!edges.isEmpty()) {
-            Map.Entry<NodeDeg, NodeDeg> entry = null;
-            synchronized(firstlock) {
-                if(edges.isEmpty()) {
-                    break;
-                }
-                entry = edges.entrySet().iterator().next();
-                edges.remove(entry.getKey());
+            NodeDegPair one = null;
+            one = edges.poll();
+            if(one == null) {
+                break;
             }
-            NodeDeg node = entry.getKey();
-            NodeDeg neighbor = entry.getValue();
+            NodeDeg node = one.node1;
+            NodeDeg neighbor = one.node2;
             if(Alg.doubleCheck(node.node, node.degree, neighbor.node, neighbor.degree)) {
                 Edge edge = new Edge(node.node, neighbor.node);
                 synchronized(secondlock) {
