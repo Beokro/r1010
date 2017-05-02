@@ -7,13 +7,20 @@
   <version>1.0-SNAPSHOT</version>
   <name>RoyCrab</name>
   <url>http://maven.apache.org</url>
+  <dependencies>
+      <dependency>
+          <groupId>com.google.guava</groupId>
+          <artifactId>guava</artifactId>
+          <version>21.0</version>
+      </dependency>
+  </dependencies>
   <build>
       <plugins>
           <plugin>
               <groupId>org.apache.maven.plugins</groupId>
               <artifactId>maven-jar-plugin</artifactId>
               <configuration>
-                <skipTests>true</skipTests>
+                  <skipTests>true</skipTests>
                   <archive>
                       <manifest>
                           <addClasspath>true</addClasspath>
@@ -24,10 +31,4 @@
           </plugin>
       </plugins>
   </build>
-  <!--
-  <properties>
-      <maven.compiler.source>1.5</maven.compiler.source>
-      <maven.compiler.target>1.5</maven.compiler.target>
-  </properties>
--->
 </project>

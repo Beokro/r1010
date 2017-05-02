@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.Random;
+import com.google.common.hash;
 
 
 class NodeDeg {
@@ -102,9 +103,7 @@ public class Alg {
     public int[][] graph2d;
     private int currentSize;
     private int change = -1;
-    Set<Integer> tabuSet = new HashSet<Integer>();                                
-    List<Integer> tabuList = new LinkedList<Integer>();                           
-    int TABU_CAP;
+    BloomFilter<int[][]> history;
 
     Alg(String destHost, int destPort) {
         client = new TcpClient(destHost, destPort);
@@ -119,18 +118,6 @@ public class Alg {
         }
     }
 
-    private void updateTabu() {
-        tabuList.add(change);
-        tabuSet.add(change);
-        change = -1;
-        if(tabuSet.size() > TABU_CAP) {
-            int toDelete = tabuList.get(0);
-            tabuList.remove(0);
-            tabuSet.remove(toDelete);
-        }
-
-    }
-    
     private void accept() {
         Round1Map.graph.put(this.change, flip(Round1Map.graph.get(this.change))); 
         Edge temp = graph.get(this.change);
@@ -141,16 +128,38 @@ public class Alg {
         graph.set(change, temp);
     }
     
+    private void updateFilter(int change) {
+        Edge temp = graph.get(change);
+        if(temp.node1 >= currentSize) {
+            temp = flip(temp);
+        }
+        graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
+        filter.put(graph2d);
+        graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
+    }
+
+    private boolean shouldVisit(int change) {
+        Edge temp = graph.get(change);
+        if(temp.node1 >= currentSize) {
+            temp = flip(temp);
+        }
+        graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
+        boolean result = history.mightContain(graph2d);
+        graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
+        return result;
+    }
+
     private long getBestNeighbor() {
         int change = -1;
         long min = Long.MAX_VALUE;
         for(int i = 0; i < graph.size(); i++) {
-            if(tabuSet.contains(i)) {
+            change = i;
+            if(!shouldVisit(change)) {
                 continue;
             }
-            change = i;
             Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
             long current = countCliques();
+            updateFilter(change);
             Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
             if(current < min) {
                 min = current;
@@ -166,12 +175,13 @@ public class Alg {
     private long getRandomNeighbor() {
         Random rand = new Random(System.currentTimeMillis());             
         int change = rand.nextInt(graph.size());
-        while(tabuSet.contains(change)) {
+        while(!shouldVisit(change)) {
             change = rand.nextInt(currentSize);
         }
         this.change = change;
         Round1Map.graph.put(change, flip(Round1Map.graph.get(change)));
         long result = countCliques();
+        updateFilter(change);
         Round1Map.graph.put(change, flip(Round1Map.graph.get(change)));
         return result;
     }
@@ -192,7 +202,6 @@ public class Alg {
                 count += 1;
             }
         }
-        TABU_CAP = size * 4;
     }
 
     public static boolean doubleCheck(int node1, int degree1, int node2, int degree2) {
@@ -271,6 +280,18 @@ public class Alg {
         long current = Long.MAX_VALUE;                                      
         Random rand = new Random(System.currentTimeMillis());
         currentSize = client.getCurrentSize();
+        Funnel<int[][]> graphFunnel = new Funnel<int[][]>() {
+            @Override
+            public void funnel(int[][] graph2d, PrimitiveSink into) {
+                for(int i = 0; i < currentSize; i++) {
+                    for(int j = i + 1; j < currentSize; j++) {
+                        into.putInt(graph2d[i][j]);
+                    }
+                }
+            }
+        };
+        history = create(graphFunnel, currentSize * (currentSize + 1) / 2, 0.00001);
+        history.put(graph2d);
 
         while(cliques != 0) {
             if(counter >= 200) {
@@ -310,9 +331,7 @@ public class Alg {
                 cliques = current;
                 accept();
             }  
-            this.change = -1;
-                                                                           
-            updateTabu();
+            updateFilter();
         } 
         counter += 1;
         client.updateFromAlg(currentSize, cliques, graph2d);
