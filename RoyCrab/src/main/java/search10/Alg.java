@@ -290,12 +290,14 @@ public class Alg {
                 }  
             } else {                                                          
                 current = getBestNeighbor();
+                cliques = current;
                 accept();
             }  
             this.change = -1;
                                                                            
             updateTabu();
-        }   
+        } 
+        client.updateFromAlg(currentSize, cliques, graph2d);
     }
 
     public static void main( String[] args ) {
