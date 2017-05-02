@@ -5,25 +5,24 @@ import java.util.concurrent.BlockingQueue;
 import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class Round1Map extends Thread {
     
     public static ConcurrentMap<Integer, Edge> graph;
     public static ConcurrentMap<Integer, Edge> save = new ConcurrentHashMap<Integer, Edge>();
-    public static ConcurrentMap<Integer, List<Integer>> result;
-    private static Object firstlock;
-    private static Object secondlock;
+    public static ConcurrentMap<Integer, BlockingQueue<Integer>> result;
+    private static Object lock;
 
     Round1Map() {
-        result = new ConcurrentHashMap<Integer, List<Integer>>();
-        firstlock = new Object();
-        secondlock = new Object();
+        result = new ConcurrentHashMap<Integer, BlockingQueue<Integer>>();
+        lock = new Object();
     }
 
     public void run() {
         while(!graph.isEmpty()) {
             Map.Entry<Integer, Edge> entry = null;
-            synchronized(firstlock) {
+            synchronized(lock) {
                 if(graph.isEmpty()) {
                     break;
                 }
@@ -34,16 +33,11 @@ public class Round1Map extends Thread {
             save.put(entry.getKey(), entry.getValue());
             int node1 = edge.node1;
             int node2 = edge.node2;
-            synchronized(secondlock) {
-                if(!result.containsKey(node1)) {
-                    result.put(node1, new ArrayList<Integer>());
-                }
-                if(!result.containsKey(node2)) {
-                    result.put(node2, new ArrayList<Integer>());
-                }
-                result.get(node1).add(node2);
-                result.get(node2).add(node1);
-            }
+            result.putIfAbsent(node1, new LinkedBlockingQueue<Integer>());
+            result.putIfAbsent(node2, new LinkedBlockingQueue<Integer>());
+            result.get(node1).add(node2);
+            result.get(node2).add(node1);
+            
         }
     }
 }

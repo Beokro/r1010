@@ -9,7 +9,7 @@ import java.util.Set;
 
 public class Round5Red extends Thread {
     
-    public static ConcurrentMap<Integer, List<Edge>> input;
+    public static ConcurrentMap<Integer, BlockingQueue<Edge>> input;
     public static ConcurrentMap<Integer, Long> result;
     private static Object lock;
 
@@ -20,7 +20,7 @@ public class Round5Red extends Thread {
     }
     public void run() {
         while(!input.isEmpty()) {
-            Map.Entry<Integer, List<Edge>> entry = null;
+            Map.Entry<Integer, BlockingQueue<Edge>> entry = null;
             synchronized(lock) {
                 if(input.isEmpty()) {
                     break;
@@ -31,8 +31,6 @@ public class Round5Red extends Thread {
             AdjListGraph g = new AdjListGraph();
             for(Edge edge : entry.getValue()) {
                 g.addEdge(Integer.toString(edge.node1), Integer.toString(edge.node2));
-            //    System.out.println(Integer.toString(edge.node1) + " " +
-            //            Integer.toString(edge.node2));
             }
             long cliques = g.countCliquesOfSize(9);
             result.put(entry.getKey(), cliques);
