@@ -109,7 +109,6 @@ public class Alg {
     Alg(String destHost, int destPort) {
         client = new TcpClient(destHost, destPort);
         client.run();
-        currentSize = client.getCurrentSize();
     }
 
     Edge flip(Edge input) {
@@ -270,6 +269,7 @@ public class Alg {
         long cliques = countCliques();
         long current = Long.MAX_VALUE;                                      
         Random rand = new Random(System.currentTimeMillis());
+        currentSize = client.getCurrentSize();
 
         while(cliques != 0) {                                                 
             int n = rand.nextInt(2);                                          
@@ -277,16 +277,11 @@ public class Alg {
                 current = getRandomNeighbor();
                 if(current < cliques) { 
                     accept();
-                    if(current <= cliques - 20 || current < 10) {
+                    if(current <= cliques / 10 * 9 || current < 1000) {
                         client.updateFromAlg(currentSize, current, graph2d);
-                        if(currentSize > client.getCurrentSize()) {
+                        if(currentSize > client.getCurrentSize() ||
+                                current > client.getCliqueSize()) {
                             return;
-                        }
-                        if(current > client.getCliqueSize()) {
-                            int notSure = rand.nextInt(2);
-                            if(notSure == 1) {
-                                return;
-                            }
                         }
                     }
                     cliques = current;                                            
