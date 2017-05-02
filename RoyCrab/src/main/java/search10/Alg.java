@@ -277,7 +277,7 @@ public class Alg {
                 current = getRandomNeighbor();
                 if(current < cliques) { 
                     accept();
-                    if(current <= cliques / 2 || current < 10) {
+                    if(current <= cliques - 20 || current < 10) {
                         client.updateFromAlg(currentSize, current, graph2d);
                     }
                     cliques = current;                                            
