@@ -6,6 +6,8 @@ import logging
 import getopt
 import time
 import random
+import textwrap
+from random import randint
 
 requestMessage = 'request'
 denyMessage = 'deny'
@@ -56,14 +58,24 @@ class TcpServer( object ):
     def defaultGraph( self, startup = False ):
         if startup:
             num = self.currentSize * self.currentSize
+            index = 0
+            res = [ '' ]
+            while index < num:
+                res.append( str( randint( 0, 1 ) ) )
+                index += 1
+            return ''.join( res )
         else:
-            num = self.currentSize * self.currentSize - ( self.currentSize - 1 ) * ( self.currentSize -1 )
-        index = 0
-        res = list( self.currentGraph )
-        while index < num:
-            res.append( str( random.uniform( 0, 1 ) ) )
-            index += 1
-        return ''.join( res )
+            res = ''
+            index = 0
+            glists = textwrap.wrap( self.currentGraph ,  self.currentSize - 1 )
+            for g in glists:
+                res += g + str( randint( 0, 1 ) )
+            while index < self.currentSize:
+                res += str( randint( 0, 1 ) )
+                index += 1
+            return res
+
+
 
     def listen( self ):
         self.sock.listen( 200 )
@@ -446,6 +458,8 @@ class TcpServer( object ):
 
         # case A_0.1, increment the problem size, include tranmission complete message
         if clientCliqueSize == 0:
+            self.recordAnswer()
+            print self.currentSize
             print self.currentGraph
             self.currentSize += 1
             self.currentGraph = self.defaultGraph()
@@ -457,6 +471,11 @@ class TcpServer( object ):
         else:
             self.doLogging( 'exchange complete', clientID )
             self.sendPacket( client, [ tranmissionCompleteMessage ] )
+
+    def recordAnswer( self ):
+        with open("answer", "a+") as myfile:
+                myfile.write( str( self.currentSize ) + '\n' )
+                myfile.write( self.currentGraph + '\n\n\n' )
 
     def denyNewGraph( self, client, tie, clientID ):
         # deny the matrix, not need to send if it is worse than current one
