@@ -10,7 +10,7 @@ import java.util.Set;
 public class Round5Red extends Thread {
     
     public static ConcurrentMap<Integer, List<Edge>> input;
-    public static ConcurrentMap<Integer, Integer> result;
+    public static ConcurrentMap<Integer, Long> result;
     private static Object lock;
 
     Round5Red() {
@@ -34,13 +34,7 @@ public class Round5Red extends Thread {
             //    System.out.println(Integer.toString(edge.node1) + " " +
             //            Integer.toString(edge.node2));
             }
-            long cliquesL = g.countCliquesOfSize(9);
-            int cliques;
-            if(cliquesL > Integer.MAX_VALUE) {
-                cliques = Integer.MAX_VALUE;
-            } else {
-                cliques = (int)cliquesL;
-            }
+            long cliques = g.countCliquesOfSize(9);
             result.put(entry.getKey(), cliques);
         }
     }

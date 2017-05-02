@@ -143,9 +143,9 @@ public class Alg {
         graph.set(change, temp);
     }
     
-    private int getBestNeighbor() {
+    private long getBestNeighbor() {
         int change = -1;
-        int min = Integer.MAX_VALUE;
+        long min = Long.MAX_VALUE;
         for(int i = 0; i < graph.size(); i++) {
             if(tabuSet.contains(i)) {
                 continue;
@@ -153,7 +153,7 @@ public class Alg {
             change = i;
             Edge haha = Round1Map.graph.get(change);
             Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
-            int current = countCliques();
+            long current = countCliques();
             Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
             if(current < min) {
                 min = current;
@@ -166,7 +166,7 @@ public class Alg {
         return min;
     }
 
-    private int getRandomNeighbor() {
+    private long getRandomNeighbor() {
         Random rand = new Random(System.currentTimeMillis());             
         int change = rand.nextInt(graph.size());
         while(tabuSet.contains(change)) {
@@ -174,7 +174,7 @@ public class Alg {
         }
         this.change = change;
         Round1Map.graph.put(change, flip(Round1Map.graph.get(change)));
-        int result = countCliques();
+        long result = countCliques();
         Round1Map.graph.put(change, flip(Round1Map.graph.get(change)));
         return result;
     }
@@ -243,7 +243,7 @@ public class Alg {
         
     }
 
-    private int countCliques() {
+    private long countCliques() {
         int cores = Runtime.getRuntime().availableProcessors();
         runRound(1, cores); 
         Round1Map.graph = Round1Map.save;
@@ -252,10 +252,10 @@ public class Alg {
         runRound(3, cores); 
         runRound(4, cores); 
         runRound(5, cores); 
-        int cliques = 0;
-        for(int i : Round5Red.result.values()) {
+        long cliques = 0;
+        for(long i : Round5Red.result.values()) {
             if(cliques > cliques + i) {
-                return Integer.MAX_VALUE;
+                return Long.MAX_VALUE;
             } else {
                 cliques += i;
             }
@@ -268,8 +268,8 @@ public class Alg {
         int t0 = 5, t1 = 100000;
         graph2d = client.getGraph();
         createGraph();
-        int cliques = countCliques();
-        int current = Integer.MAX_VALUE;                                      
+        long cliques = countCliques();
+        long current = Long.MAX_VALUE;                                      
         Random rand = new Random(System.currentTimeMillis());
 
         while(cliques != 0) {                                                 
