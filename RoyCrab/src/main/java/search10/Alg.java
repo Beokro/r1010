@@ -282,6 +282,12 @@ public class Alg {
                         if(currentSize > client.getCurrentSize()) {
                             return;
                         }
+                        if(current > client.getCliqueSize()) {
+                            int notSure = rand.nextInt(2);
+                            if(notSure == 1) {
+                                return;
+                            }
+                        }
                     }
                     cliques = current;                                            
                 } else {                                                          
