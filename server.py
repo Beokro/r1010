@@ -5,6 +5,7 @@ import os
 import logging
 import getopt
 import time
+import random
 
 requestMessage = 'request'
 denyMessage = 'deny'
@@ -40,8 +41,9 @@ class TcpServer( object ):
         self.firstCandidate = False
         self.lock = threading.Lock()
         self.currentSize = currentSize
-        self.currentGraph = self.defaultGraph()
-        self.cliqueSize = 111111111
+        self.currentGraph = ''
+        self.currentGraph = self.defaultGraph( True )
+        self.cliqueSize = sys.maxsize
         self.counter = 0
         self.sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
         self.sock.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
@@ -51,8 +53,17 @@ class TcpServer( object ):
                              level = logging.DEBUG )
         self.doLogging( 'server run on address: ' + host + ' port: ' + str( port ), '-1' )
 
-    def defaultGraph( self ):
-        return '0' * ( currentSize * currentSize )
+    def defaultGraph( self, startup = False ):
+        if startup:
+            num = self.currentSize * self.currentSize
+        else:
+            num = self.currentSize * self.currentSize - ( self.currentSize - 1 ) * ( self.currentSize -1 )
+        index = 0
+        res = list( self.currentGraph )
+        while index < num:
+            res.append( str( random.uniform( 0, 1 ) ) )
+            index += 1
+        return ''.join( res )
 
     def listen( self ):
         self.sock.listen( 200 )
@@ -435,9 +446,10 @@ class TcpServer( object ):
 
         # case A_0.1, increment the problem size, include tranmission complete message
         if clientCliqueSize == 0:
+            print self.currentGraph
             self.currentSize += 1
             self.currentGraph = self.defaultGraph()
-            self.cliqueSize = 111111111
+            self.cliqueSize = sys.maxsize
             self.doLogging( 'answer found, update problem size', clientID )
             self.cleanLogFile()
             self.handleDifferentProblemSize( client, clientID )
