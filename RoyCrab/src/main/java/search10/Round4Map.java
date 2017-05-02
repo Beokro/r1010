@@ -13,16 +13,14 @@ public class Round4Map extends Thread {
     
     public static ConcurrentMap<NodeDeg, List<NodeDeg>> withNeighbors;
     public static BlockingQueue<NodeDegPair> edges;
-    public static ConcurrentMap<Edge, Set<Integer>> result;
-    private static Object firstlock;
-    private static Object secondlock;
+    public static ConcurrentMap<Edge, ConcurrentMap<Integer, Integer>> result;
+    private static Object lock;
 
     Round4Map() {
         withNeighbors = Round3Red.result;
         edges = Round2Red.save;
-        result = new ConcurrentHashMap<Edge, Set<Integer>>();
-        firstlock = new Object();
-        secondlock = new Object();
+        result = new ConcurrentHashMap<Edge, ConcurrentMap<Integer, Integer>>();
+        lock = new Object();
     }
     public void run() {
         while(!edges.isEmpty()) {
@@ -35,17 +33,13 @@ public class Round4Map extends Thread {
             NodeDeg neighbor = one.node2;
             if(Alg.doubleCheck(node.node, node.degree, neighbor.node, neighbor.degree)) {
                 Edge edge = new Edge(node.node, neighbor.node);
-                synchronized(secondlock) {
-                    if(!result.containsKey(edge)) {
-                        result.put(edge, new HashSet<Integer>());
-                    }
-                    result.get(edge).add(-1);
-                }
+                result.putIfAbsent(edge, new ConcurrentHashMap<Integer, Integer>());
+                result.get(edge).put(-1, 0);
             }
         }
         while(!withNeighbors.isEmpty()) {
             Map.Entry<NodeDeg, List<NodeDeg>> entry = null;
-            synchronized(firstlock) {
+            synchronized(lock) {
                 if(withNeighbors.isEmpty()) {
                     break;
                 }
@@ -63,12 +57,9 @@ public class Round4Map extends Thread {
                     } else {
                         newEdge = new Edge(node2.node, node1.node);
                     }
-                    synchronized(secondlock) {
-                        if(!result.containsKey(newEdge)) {
-                            result.put(newEdge, new HashSet<Integer>());
-                        }
-                        result.get(newEdge).add(entry.getKey().node);
-                    }
+                    result.putIfAbsent(newEdge, new ConcurrentHashMap<Integer, Integer>());
+                    result.get(newEdge).put(entry.getKey().node, 0);
+                    
                 }
             }
 

@@ -5,20 +5,17 @@ import java.util.concurrent.BlockingQueue;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.concurrent.LinkedBlockingQueue;
 
 
 public class Round2Map extends Thread {
     
     public static BlockingQueue<OneNeighbor> input;
-    public static ConcurrentMap<Integer, List<NodeDeg>> result;
-    private static Object firstlock;
-    private static Object secondlock;
+    public static ConcurrentMap<Integer, BlockingQueue<NodeDeg>> result;
 
     Round2Map() {
         input = Round1Red.result;
-        result = new ConcurrentHashMap<Integer, List<NodeDeg>>();
-        firstlock = new Object();
-        secondlock = new Object();
+        result = new ConcurrentHashMap<Integer, BlockingQueue<NodeDeg>>();
     }
 
     public void run() {
@@ -30,12 +27,9 @@ public class Round2Map extends Thread {
             }
             NodeDeg node = one.node;
             int neighbor = one.neighbor;
-            synchronized(secondlock) {
-                if(!result.containsKey(neighbor)) {
-                    result.put(neighbor, new ArrayList<NodeDeg>());
-                }
-                result.get(neighbor).add(node);
-            }
+            result.putIfAbsent(neighbor, new LinkedBlockingQueue<NodeDeg>());
+            result.get(neighbor).add(node);
+            
         }
     }
 }
