@@ -187,7 +187,7 @@ class TcpServer( object ):
                 self.currentSize = currentSize
                 self.cliqueSize = cliqueSize
                 self.sendPacket( backupSock, [ requestMessage ] )
-                data = self.recvPacket( backupSock, self.currentSize * currentSize + 10 )
+                data = self.recvPacket( backupSock, self.currentSize * self.currentSize + 10 )
                 self.currentGraph = data[ 0 ]
 
             self.sendPacket( backupSock, [ syncCompleteMessage ] )
@@ -233,7 +233,7 @@ class TcpServer( object ):
         self.doLogging( 'new connection establish', clientID )
         # send my currentSize and graph to the clinet to start the computation
         self.lock.acquire()
-        data = self.recvPacket( client, 20 )
+        data = self.recvPacket( client, 50 )
         if data[ 0 ] == clientClaimMessage:
             print 'it is a client'
             self.handleClientToServer( client, address, clientID )
@@ -439,7 +439,7 @@ class TcpServer( object ):
         global errorMessage
         global tranmissionCompleteMessage
         graph = ' '
-        recvSize = self.currentSize * self.currentSize + 10
+        recvSize = self.currentSize * self.currentSize + 50
 
         # request the matrix from the client
         self.doLogging( 'request graph from client', clientID )
@@ -527,7 +527,15 @@ class TcpServer( object ):
 
     # take care of receiving and split the data inside packet
     def recvPacket( self, client, size ):
-        data = client.recv( size )
+        if size > 1448:
+            data = ''
+            temp = client.recv( size )
+            while not temp.endswith( '\n' ):
+                data += temp
+                temp = client.recv( size )
+            data += temp
+        else:
+            data = client.recv( size )
         return data.split( '\n' )
 
     def cleanLogFile( self ):
