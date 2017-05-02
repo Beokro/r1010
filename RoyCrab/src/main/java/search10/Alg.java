@@ -265,7 +265,7 @@ public class Alg {
 
     public void start() {
 
-        int t0 = 5, t1 = 10000;
+        int t0 = 5, t1 = 100000;
         graph2d = client.getGraph();
         createGraph();
         int cliques = countCliques();
