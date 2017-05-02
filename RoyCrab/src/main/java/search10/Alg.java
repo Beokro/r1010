@@ -279,6 +279,9 @@ public class Alg {
                     accept();
                     if(current <= cliques - 20 || current < 10) {
                         client.updateFromAlg(currentSize, current, graph2d);
+                        if(currentSize > client.getCurrentSize()) {
+                            return;
+                        }
                     }
                     cliques = current;                                            
                 } else {                                                          
