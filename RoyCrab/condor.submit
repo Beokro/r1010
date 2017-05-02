@@ -1,0 +1,6 @@
+universe = java
+executable = RoyCrab-1.0-SNAPSHOT.jar
+jar_files = RoyCrab-1.0-SNAPSHOT.jar
+Arguments = search10.Alg
+output = Alg.output
+error = Alg.error

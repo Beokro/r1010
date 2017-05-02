@@ -25,8 +25,7 @@ class NodeDeg {
             return false;
         }
         NodeDeg temp = (NodeDeg)o;
-        boolean haha = node == temp.node && degree == temp.degree;
-        return haha;
+        return node == temp.node && degree == temp.degree;
     }
 
     @Override
@@ -151,7 +150,6 @@ public class Alg {
                 continue;
             }
             change = i;
-            Edge haha = Round1Map.graph.get(change);
             Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
             long current = countCliques();
             Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
@@ -245,7 +243,7 @@ public class Alg {
 
     private long countCliques() {
         int cores = Runtime.getRuntime().availableProcessors();
-        runRound(1, cores); 
+        runRound(1, cores);
         Round1Map.graph = Round1Map.save;
         Round1Map.save = new ConcurrentHashMap<>();
         runRound(2, cores); 
@@ -267,6 +265,7 @@ public class Alg {
 
         int t0 = 5, t1 = 100000;
         graph2d = client.getGraph();
+        graph = new ArrayList<>();
         createGraph();
         long cliques = countCliques();
         long current = Long.MAX_VALUE;                                      
