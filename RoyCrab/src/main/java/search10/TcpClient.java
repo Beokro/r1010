@@ -68,7 +68,7 @@ public class TcpClient {
             sockReader = new BufferedReader( new InputStreamReader( sock.getInputStream() ) );
             sockWriter = new BufferedWriter( new OutputStreamWriter( sock.getOutputStream()) );
         } catch ( IOException i ) {
-            System.out.println( "failed to connect to host" );
+            //System.out.println( "failed to connect to host" );
             i.printStackTrace();
             return false;
         }
@@ -90,9 +90,9 @@ public class TcpClient {
         currentSize = Integer.parseInt( read() );
         cliqueSize = Long.parseLong( read() );
         currentGraph = read();
-        System.out.println( "Client start to work on problem with size " +
-                            Integer.toString( currentSize ) + " and clique size " +
-                            Long.toString( cliqueSize ) );
+        //System.out.println( "Client start to work on problem with size " +
+        //                    Integer.toString( currentSize ) + " and clique size " +
+        //                    Long.toString( cliqueSize ) );
 
     }
 
@@ -152,12 +152,12 @@ public class TcpClient {
     public void startExchange() {
         String message;
 
-        System.out.println( "exchange start" );
+        //System.out.println( "exchange start" );
         write( new String[] { exchangeStartMessage } );
         message = read();
         if ( !message.equals( exchangeConfirmedMessage ) ) {
-            System.out.println( "message = " + message );
-            System.out.println( "expecting = " + exchangeConfirmedMessage );
+            //System.out.println( "message = " + message );
+            //System.out.println( "expecting = " + exchangeConfirmedMessage );
             // exchange is not sync with server, end conversion
             return;
         }
@@ -175,26 +175,26 @@ public class TcpClient {
         } else if ( message.equals( problemSizeChangedMessage ) ) {
             handleProblemSizeChanged();
         } else {
-            System.out.println( "Unexpected message from server " + message );
+            //System.out.println( "Unexpected message from server " + message );
         }
     }
 
     public void handleRequestGraph() {
         String message = "";
-        System.out.println( "server request client side graph" );
+        //System.out.println( "server request client side graph" );
         write( new String[] { currentGraph } );
         message = read();
 
         if ( message.equals( errorMessage ) ) {
             // case A_0.2, case A_1.2
-            System.out.println( "client side graph is corrupted or invalid" );
+            //System.out.println( "client side graph is corrupted or invalid" );
             return;
         } else if ( message.equals( problemSizeChangedMessage ) ) {
             // case A_0.1
             handleProblemSizeChanged();
         } else if ( message.equals( tranmissionCompleteMessage ) ) {
             // case A_1.1
-            System.out.println( "exchange complete" );
+            //System.out.println( "exchange complete" );
         } else {
             unpextedMessage( tranmissionCompleteMessage, message );
         }
@@ -206,28 +206,28 @@ public class TcpClient {
         this.currentSize = Integer.parseInt( read() );
         this.cliqueSize = Long.parseLong( read() );
         this.currentGraph = read();
-        System.out.println( "problem size not matched with server, now = " + this.currentSize );
+        //System.out.println( "problem size not matched with server, now = " + this.currentSize );
         message = read();
         if ( message.equals( tranmissionCompleteMessage ) ) {
-            System.out.println( "exchange complete" );
+            //System.out.println( "exchange complete" );
         } else {
             unpextedMessage( tranmissionCompleteMessage, message );
         }
     }
 
     public void unpextedMessage( String expecting, String got ) {
-        System.out.println( "expecting " + expecting );
-        System.out.println( "got " + got );
+        //System.out.println( "expecting " + expecting );
+        //System.out.println( "got " + got );
     }
 
     public void handleDeny() {
         String message = read();
         if ( message.equals( tieMessage ) ) {
-            System.out.println( "server and client haave same clique" );
+            //System.out.println( "server and client haave same clique" );
         } else {
             this.cliqueSize = Long.parseLong( message );
             this.currentGraph = read();
-            System.out.println( "server has better clique " + message );
+            //System.out.println( "server has better clique " + message );
         }
     }
 
@@ -247,7 +247,7 @@ public class TcpClient {
         try {
             return sockReader.readLine();
         } catch( IOException i ) {
-            System.out.println( "failed to read from host" );
+            //System.out.println( "failed to read from host" );
             i.printStackTrace();
             return readFailedMessage;
         }
@@ -264,7 +264,7 @@ public class TcpClient {
             sockWriter.write( message.toString() );
             sockWriter.flush();
         } catch( IOException i ) {
-            System.out.println( "failed to send message to host" );
+            //System.out.println( "failed to send message to host" );
             i.printStackTrace();
             return;
         }
@@ -275,7 +275,7 @@ public class TcpClient {
         try {
             sock.close();
         } catch( IOException i ) {
-            System.out.println( "failed to close the connection with server" );
+            //System.out.println( "failed to close the connection with server" );
             i.printStackTrace();
             return;
         }
