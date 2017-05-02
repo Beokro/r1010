@@ -10,6 +10,10 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.Random;
+import java.rmi.RemoteException;
+import java.rmi.registry.Registry;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.NotBoundException;
 import com.google.common.hash;
 
 
@@ -103,11 +107,15 @@ public class Alg {
     public int[][] graph2d;
     private int currentSize;
     private int change = -1;
-    BloomFilter<int[][]> history;
+    RemoteBloomFilter sharedHis;
+    BloomFilter<int[][]> tempHist;
 
-    Alg(String destHost, int destPort) {
+    Alg(String destHost, int destPort) throws 
+                        RemoteException, NotBoundException, MalformedURLException {
         client = new TcpClient(destHost, destPort);
         client.run();
+        Registry reg = LocateRegistry.getRegistry("98.185.210.172", 7788);
+        sharedHis = (RemoteBloomFilter) reg.lookup("RemoteBloomFilter");
     }
 
     Edge flip(Edge input) {
@@ -116,6 +124,26 @@ public class Alg {
         } else {
             return new Edge(input.node1 - currentSize, input.node2 - currentSize);
         }
+    }
+
+    // assume remoteCurrentSize < currentSize
+    private void updateHistory() throws RemoteException {
+
+    }
+
+    private void addHistory(int change) throws RemoteException {
+        Funnel<int[][]> graphFunnel = new Funnel<int[][]>() {
+            @Override
+            public void funnel(int[][] graph2d, PrimitiveSink into) {
+                for(int i = 0; i < currentSize; i++) {
+                    for(int j = i + 1; j < currentSize; j++) {
+                        into.putInt(graph2d[i][j]);
+                    }
+                }
+            }
+        };
+        tempHis = create(graphFunnel, currentSize * (currentSize + 1) / 2, 0.00001);
+        tempHis.put(graph2d);
     }
 
     private void accept() {
@@ -280,18 +308,6 @@ public class Alg {
         long current = Long.MAX_VALUE;                                      
         Random rand = new Random(System.currentTimeMillis());
         currentSize = client.getCurrentSize();
-        Funnel<int[][]> graphFunnel = new Funnel<int[][]>() {
-            @Override
-            public void funnel(int[][] graph2d, PrimitiveSink into) {
-                for(int i = 0; i < currentSize; i++) {
-                    for(int j = i + 1; j < currentSize; j++) {
-                        into.putInt(graph2d[i][j]);
-                    }
-                }
-            }
-        };
-        history = create(graphFunnel, currentSize * (currentSize + 1) / 2, 0.00001);
-        history.put(graph2d);
 
         while(cliques != 0) {
             if(counter >= 200) {
