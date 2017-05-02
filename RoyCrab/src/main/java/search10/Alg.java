@@ -147,11 +147,11 @@ public class Alg {
         int change = -1;
         int min = Integer.MAX_VALUE;
         for(int i = 0; i < graph.size(); i++) {
+            if(tabuSet.contains(i)) {
+                continue;
+            }
             change = i;
             Edge haha = Round1Map.graph.get(change);
-            if(haha == null) {
-                System.out.println("haha");
-            }
             Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
             int current = countCliques();
             Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
