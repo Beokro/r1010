@@ -148,6 +148,10 @@ public class Alg {
         int min = Integer.MAX_VALUE;
         for(int i = 0; i < graph.size(); i++) {
             change = i;
+            Edge haha = Round1Map.graph.get(change);
+            if(haha == null) {
+                System.out.println("haha");
+            }
             Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
             int current = countCliques();
             Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
@@ -204,7 +208,7 @@ public class Alg {
     private void runRound(int round, int cores) {
         List<Thread> mappers = new ArrayList<>();
         List<Thread> reducers = new ArrayList<>();
-        int workers = 1;
+        int workers = cores;
         for(int i = 0; i < workers; i++) {
             MapRed thisRound = RoundFactory.makeRound(round);
             mappers.add(0, thisRound.map);
@@ -280,7 +284,7 @@ public class Alg {
                     cliques = current;                                            
                 } else {                                                          
                     double prob =                                                 
-                        Math.pow(Math.E, ((double)(current - cliques))/((double)t1));
+                        Math.pow(Math.E, ((double)(cliques - current))/((double)t1));
                     if(prob - rand.nextDouble() >= 0.0000001) { 
                         accept();
                         cliques = current;
@@ -302,8 +306,9 @@ public class Alg {
 
     public static void main( String[] args ) {
         
-        Alg haha = new Alg("98.185.210.172", 7788);
-
-        haha.start();
+        Alg excalibur = new Alg("98.185.210.172", 7788);
+        while(true) {
+            excalibur.start();
+        }
     }
 }
