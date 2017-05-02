@@ -192,7 +192,7 @@ public class Alg {
                 count += 1;
             }
         }
-        TABU_CAP = graph.size() / 4;
+        TABU_CAP = size * 4;
     }
 
     public static boolean doubleCheck(int node1, int degree1, int node2, int degree2) {
@@ -263,6 +263,7 @@ public class Alg {
     public void start() {
 
         int t0 = 5, t1 = 100000;
+        int counter = 0;
         graph2d = client.getGraph();
         graph = new ArrayList<Edge>();
         createGraph();
@@ -271,7 +272,16 @@ public class Alg {
         Random rand = new Random(System.currentTimeMillis());
         currentSize = client.getCurrentSize();
 
-        while(cliques != 0) {                                                 
+        while(cliques != 0) {
+            if(counter >= 200) {
+                client.updateFromAlg(currentSize, cliques, graph2d);
+                if(currentSize < client.getCurrentSize() ||
+                        cliques - client.getCliqueSize() > 10) {
+                    return;
+                } else {
+                    counter = 0;
+                }
+            }
             int n = rand.nextInt(2);                                          
             if(n == 0) {
                 current = getRandomNeighbor();
@@ -304,6 +314,7 @@ public class Alg {
                                                                            
             updateTabu();
         } 
+        counter += 1;
         client.updateFromAlg(currentSize, cliques, graph2d);
     }
 
