@@ -18,7 +18,7 @@ public class Round5Map extends Thread {
 
     Round5Map() {
         input = Round4Red.result;
-        result = new ConcurrentHashMap<>();
+        result = new ConcurrentHashMap<Integer, List<Edge>>();
         firstlock = new Object();
         secondlock = new Object();
     }

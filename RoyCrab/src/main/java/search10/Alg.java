@@ -98,12 +98,12 @@ class NodeDegPair {
 
 public class Alg {
     public static TcpClient client;
-    public static List<Edge> graph = new ArrayList<>();
+    public static List<Edge> graph = new ArrayList<Edge>();
     public int[][] graph2d;
     private int currentSize;
     private int change = -1;
-    Set<Integer> tabuSet = new HashSet<>();                                
-    List<Integer> tabuList = new LinkedList<>();                           
+    Set<Integer> tabuSet = new HashSet<Integer>();                                
+    List<Integer> tabuList = new LinkedList<Integer>();                           
     int TABU_CAP;
 
     Alg(String destHost, int destPort) {
@@ -179,7 +179,7 @@ public class Alg {
 
     private void createGraph() {
         int size = graph2d.length;
-        Round1Map.graph = new ConcurrentHashMap<>();
+        Round1Map.graph = new ConcurrentHashMap<Integer, Edge>();
         int count = 0;
         for(int i = 0; i < size; i++) {
             for(int j = i + 1; j < size; j++) {
@@ -204,8 +204,8 @@ public class Alg {
     }
 
     private void runRound(int round, int cores) {
-        List<Thread> mappers = new ArrayList<>();
-        List<Thread> reducers = new ArrayList<>();
+        List<Thread> mappers = new ArrayList<Thread>();
+        List<Thread> reducers = new ArrayList<Thread>();
         int workers = cores;
         for(int i = 0; i < workers; i++) {
             MapRed thisRound = RoundFactory.makeRound(round);
@@ -245,7 +245,7 @@ public class Alg {
         int cores = Runtime.getRuntime().availableProcessors();
         runRound(1, cores);
         Round1Map.graph = Round1Map.save;
-        Round1Map.save = new ConcurrentHashMap<>();
+        Round1Map.save = new ConcurrentHashMap<Integer, Edge>();
         runRound(2, cores); 
         runRound(3, cores); 
         runRound(4, cores); 
@@ -265,7 +265,7 @@ public class Alg {
 
         int t0 = 5, t1 = 100000;
         graph2d = client.getGraph();
-        graph = new ArrayList<>();
+        graph = new ArrayList<Edge>();
         createGraph();
         long cliques = countCliques();
         long current = Long.MAX_VALUE;                                      

@@ -9,13 +9,13 @@ import java.util.ArrayList;
 public class Round1Map extends Thread {
     
     public static ConcurrentMap<Integer, Edge> graph;
-    public static ConcurrentMap<Integer, Edge> save = new ConcurrentHashMap<>();
+    public static ConcurrentMap<Integer, Edge> save = new ConcurrentHashMap<Integer, Edge>();
     public static ConcurrentMap<Integer, List<Integer>> result;
     private static Object firstlock;
     private static Object secondlock;
 
     Round1Map() {
-        result = new ConcurrentHashMap<>();
+        result = new ConcurrentHashMap<Integer, List<Integer>>();
         firstlock = new Object();
         secondlock = new Object();
     }

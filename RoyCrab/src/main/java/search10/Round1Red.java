@@ -15,7 +15,7 @@ public class Round1Red extends Thread {
     Round1Red() {
         lock = new Object();
         input = Round1Map.result;
-        result = new LinkedBlockingQueue<>();
+        result = new LinkedBlockingQueue<OneNeighbor>();
     }
 
     public void run() {

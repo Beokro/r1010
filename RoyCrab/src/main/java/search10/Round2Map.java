@@ -16,7 +16,7 @@ public class Round2Map extends Thread {
 
     Round2Map() {
         input = Round1Red.result;
-        result = new ConcurrentHashMap<>();
+        result = new ConcurrentHashMap<Integer, List<NodeDeg>>();
         firstlock = new Object();
         secondlock = new Object();
     }

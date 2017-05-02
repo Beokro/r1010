@@ -15,7 +15,7 @@ public class Round4Red extends Thread {
 
     Round4Red() {
         input = Round4Map.result;
-        result = new ConcurrentHashMap<>();
+        result = new ConcurrentHashMap<Edge, Set<Integer>>();
         lock = new Object();
     }
     public void run() {

@@ -20,7 +20,7 @@ public class Round4Map extends Thread {
     Round4Map() {
         withNeighbors = Round3Red.result;
         edges = Round2Red.save;
-        result = new ConcurrentHashMap<>();
+        result = new ConcurrentHashMap<Edge, Set<Integer>>();
         firstlock = new Object();
         secondlock = new Object();
     }

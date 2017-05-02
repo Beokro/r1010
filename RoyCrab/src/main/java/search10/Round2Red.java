@@ -16,8 +16,8 @@ public class Round2Red extends Thread {
 
     Round2Red() {
         input = Round2Map.result;
-        result = new LinkedBlockingQueue<>();
-        save = new LinkedBlockingQueue<>();
+        result = new LinkedBlockingQueue<NodeDegPair>();
+        save = new LinkedBlockingQueue<NodeDegPair>();
         lock = new Object();
     }
 
