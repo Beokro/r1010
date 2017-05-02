@@ -141,7 +141,7 @@ public class TcpClient {
 
         for ( int i = 0; i < currentSize; i++ ) {
             for ( int j = 0; j < currentSize; j++ ) {
-                message[ i ][ j ] = graph.charAt( counter );
+                message[ i ][ j ] = graph.charAt( counter ) - 48;
                 counter++;
             }
         }
@@ -283,7 +283,7 @@ public class TcpClient {
 
 
     public static void main( String[] args ) {
-        TcpClient client = new TcpClient( "localhost", 7788 );
+        TcpClient client = new TcpClient( "192.168.0.14", 7788 );
         Random rand = new Random();
         int reduce = 0;
         int currentClique = 500;
