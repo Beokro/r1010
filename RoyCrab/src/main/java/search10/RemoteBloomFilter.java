@@ -13,7 +13,7 @@ public class RemoteBloomFilter extends UnicastRemoteObject {
     private Object lock = new Object();
 
     RemoteBloomFilter() {
-        tcpClient = new TcpClient("98.185.210.172", 7788);
+        tcpClient = new TcpClient("98.185.210.172", 7777);
         tcpClient.run();
         Funnel<int[][]> graphFunnel = new Funnel<int[][]>() {
             @Override
