@@ -43,8 +43,7 @@ class TcpServer( object ):
         self.firstCandidate = False
         self.lock = threading.Lock()
         self.currentSize = currentSize
-        self.currentGraph = ''
-        self.currentGraph = self.defaultGraph( True )
+        self.currentGraph = self.generateGraph()
         self.cliqueSize = sys.maxsize
         self.counter = 0
         self.sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
@@ -55,8 +54,30 @@ class TcpServer( object ):
                              level = logging.DEBUG )
         self.doLogging( 'server run on address: ' + host + ' port: ' + str( port ), '-1' )
 
-    def defaultGraph( self, startup = False ):
-        if startup:
+    def generateGraph( self ):
+        with open( 'answer' ) as f:
+            content = f.readlines()
+
+        content = [ x.strip() for x in content ]
+        listSize = len( content )
+        lastResult = int( content[ listSize - 4 ] )
+
+        if self.currentSize != -1:
+            target = self.currentSize
+        else:
+            self.currentSize = target = lastResult + 1
+
+        possibleIndex = ( target - 25 - 1 ) * 4
+        if target < 25 or target - 1 > lastResult or int( content[ possibleIndex ] ) != target - 1:
+            print 'random generate targe = ' + str( target )
+            return self.defaultGraph( True )
+        else:
+            self.currentGraph = content[ possibleIndex + 1 ]
+            print 'use answer, generate graph for ' + str( self.currentSize )
+            return self.defaultGraph()
+
+    def defaultGraph( self, rand = False ):
+        if rand:
             num = self.currentSize * self.currentSize
             index = 0
             res = [ '' ]
@@ -74,8 +95,6 @@ class TcpServer( object ):
                 res += str( randint( 0, 1 ) )
                 index += 1
             return res
-
-
 
     def listen( self ):
         self.sock.listen( 200 )
@@ -576,7 +595,7 @@ if __name__ == "__main__":
     destIP = '0.0.0.0'
     destPort = 7788
     backup = False
-    currentSize = 5
+    currentSize = -1
 
     for o, a in opts:
         if o in ( "-h", "--help" ):
