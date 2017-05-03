@@ -49,6 +49,7 @@ class TcpServer( object ):
         self.sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
         self.sock.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
         self.sock.bind( ( self.host, self.port ) )
+        self.liveConnection = 0
         logging.basicConfig( format = '%(asctime)s %(levelname)s: %(message)s',
                              filename = self.logDir,
                              level = logging.DEBUG )
@@ -97,7 +98,7 @@ class TcpServer( object ):
             return res
 
     def listen( self ):
-        self.sock.listen( 200 )
+        self.sock.listen( 800 )
         if self.backup:
             tt = threading.Thread( target = self.contactMainServer )
             tt.daemon = True
@@ -105,7 +106,8 @@ class TcpServer( object ):
         while True:
             client, address = self.sock.accept()
             # need to be more careful about the timeout
-            # client.settimeout( 60 )
+            client.settimeout( 60 )
+            self.liveConnection += 1
             self.counter += 1
             t = threading.Thread( target = self.handleClient,
                                   args = ( client, address, str( self.counter ) ) )
@@ -124,6 +126,7 @@ class TcpServer( object ):
     def contactMainServer( self ):
         # create a new sock and connect to server
         backupSock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
+        backupSock.settimeout( 60 )
         try:
             backupSock.connect( ( self.destHost, self.destPort ) )
         except:
@@ -258,7 +261,10 @@ class TcpServer( object ):
             self.handleClientToServer( client, address, clientID )
         else:
             print 'it is a server'
-            self.handleServerToServer( client, address, clientID, data[ 1 ] )
+            try:
+                self.handleServerToServer( client, address, clientID, data[ 1 ] )
+            except:
+                print 'server to server failed\n'
 
     # ********************************************************
     # *********************************************
@@ -319,7 +325,7 @@ class TcpServer( object ):
                 else:
                     self.doLogging(  'backup server disconnected', clientID, 'warning' )
                     # to do, handle backup server disconnect
-                    raise error( 'backup server disconnected' )
+                    raise Exception( 'backup server disconnected' )
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split( exc_tb.tb_frame.f_code.co_filename ) [ 1 ]
@@ -396,6 +402,9 @@ class TcpServer( object ):
                     self.handleClique( data, client, clientID )
                 else:
                     self.doLogging(  'client disconnected', clientID, 'warning' )
+                    self.liveConnection -= 1
+                    self.doLogging(  'remaining connection # = ' + str( self.liveConnection ),
+                                     clientID )
                     raise Exception( 'Client disconnected' )
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()

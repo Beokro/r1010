@@ -109,10 +109,8 @@ Backup -> backup listenling port
 
 # ToDo List
 
-* timeout
 * server side handle restart
 * client side handle restart
-* client side handle main server down
 * first candidate backup server handle main server down
 * other backup server handle main server down
 * all conversion to int might have a error
