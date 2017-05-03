@@ -25,14 +25,14 @@ public class RemoteBloomFilter extends UnicastRemoteObject {
     };
 
     RemoteBloomFilter() throws RemoteException{
-        tcpClient = new TcpClient("98.185.210.172", 7777);
+        tcpClient = new TcpClient("98.185.210.172", 7788);
         tcpClient.run();
         currentSize = tcpClient.getCurrentSize();
         bloomFilter = BloomFilter.create(graphFunnel, CAP, fpp);
     }
 
     public synchronized void refresh() throws RemoteException{
-        tcpClient = new TcpClient("98.185.210.172", 7777);
+        tcpClient = new TcpClient("98.185.210.172", 7788);
         tcpClient.run();
         currentSize = tcpClient.getCurrentSize();
         bloomFilter = BloomFilter.create(graphFunnel, CAP, fpp);
@@ -56,15 +56,17 @@ public class RemoteBloomFilter extends UnicastRemoteObject {
     }
 
     public static void main(String[] args) {
-        if(System.getSecurityManager() == null) {
-            System.setSecurityManager(new SecurityManager());
-        }
+        
+        //if(args.length < 1) {
+        //    System.out.println("Usage: java -jar <executable> <filter port number>");
+        //}
         try {
             RemoteBloomFilter filter = new RemoteBloomFilter();
-            Registry registry = LocateRegistry.createRegistry(7789);
+            //Registry registry = LocateRegistry.createRegistry(Integer.parseInt(args[0]));
+            Registry registry = LocateRegistry.createRegistry(7770);
             registry.rebind("RemoteBloomFilter", filter);
             System.out.println("Remote bloom filter starts");
-        } catch (Exception e) {
+        } catch (RemoteException e) {
             e.printStackTrace();
         }
     }

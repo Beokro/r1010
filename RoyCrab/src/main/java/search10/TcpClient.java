@@ -263,7 +263,7 @@ public class TcpClient {
             }
             sockWriter.write( message.toString() );
             sockWriter.flush();
-        } catch( IOException i ) {
+        } catch( Exception i ) {
             //System.out.println( "failed to send message to host" );
             i.printStackTrace();
             return;

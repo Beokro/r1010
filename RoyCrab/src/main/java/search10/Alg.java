@@ -114,11 +114,11 @@ public class Alg {
     Set<Integer> tabuSet = new HashSet<Integer>();
     int TABU_CAP;
 
-    Alg(String destHost, int destPort) throws 
+    Alg(int filterPort) throws 
                         RemoteException, NotBoundException, MalformedURLException {
-        client = new TcpClient(destHost, destPort);
+        client = new TcpClient("98.185.210.172", 7788);
         client.run();
-        Registry reg = LocateRegistry.getRegistry("98.185.210.172", 7788);
+        Registry reg = LocateRegistry.getRegistry("98.185.210.172", filterPort);
         sharedHis = (RemoteBloomFilter) reg.lookup("RemoteBloomFilter");
     }
 
@@ -320,7 +320,8 @@ public class Alg {
     public void start() {
 
         int t0 = 5, t1 = 100000;
-        int counter = 0;
+        long timestamp = System.currentTimeMillis();
+        long interval = 600000L;
         graph2d = client.getGraph();
         graph = new ArrayList<Edge>();
         createGraph();
@@ -331,13 +332,13 @@ public class Alg {
         TABU_CAP = currentSize * 2;
 
         while(cliques != 0) {
-            if(counter >= 200) {
+            if(System.currentTimeMillis() - timestamp >= interval) {
                 client.updateFromAlg(currentSize, cliques, graph2d);
                 if(currentSize < client.getCurrentSize() ||
                         cliques - client.getCliqueSize() > 10) {
                     return;
                 } else {
-                    counter = 0;
+                    timestamp = System.currentTimeMillis();
                 }
             }
             int n = rand.nextInt(2);                                          
@@ -370,15 +371,18 @@ public class Alg {
             }  
             updateTabu(this.change);
         }
-        counter += 1;
         client.updateFromAlg(currentSize, cliques, graph2d);
     }
 
     public static void main( String[] args ) {
         
+        //if(args.length < 1) {
+        //    System.out.println("Usage: java -jar <executable> <filter port number>");
+        //}
         Alg excalibur = null;
         try {
-            excalibur = new Alg("98.185.210.172", 7788);
+            //excalibur = new Alg(Integer.parseInt(args[0]));
+            excalibur = new Alg(7770);
         } catch(Exception e) {
             e.printStackTrace();
             return;
