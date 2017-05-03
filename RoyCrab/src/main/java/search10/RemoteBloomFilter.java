@@ -7,6 +7,8 @@ import java.rmi.server.UnicastRemoteObject;
 import com.google.common.hash.*;
 
 public class RemoteBloomFilter extends UnicastRemoteObject {
+    public static int PORT = 2014;
+    public static String SERVICE_NAME = "RemoteBloomFilter";
     private BloomFilter<int[][]> bloomFilter;    
     private int currentSize;
     private TcpClient tcpClient;
@@ -25,6 +27,7 @@ public class RemoteBloomFilter extends UnicastRemoteObject {
     };
 
     RemoteBloomFilter() throws RemoteException{
+        super(PORT);
         tcpClient = new TcpClient("98.185.210.172", 7788);
         tcpClient.run();
         currentSize = tcpClient.getCurrentSize();
@@ -56,15 +59,13 @@ public class RemoteBloomFilter extends UnicastRemoteObject {
     }
 
     public static void main(String[] args) {
-        
-        //if(args.length < 1) {
-        //    System.out.println("Usage: java -jar <executable> <filter port number>");
-        //}
+
         try {
-            RemoteBloomFilter filter = new RemoteBloomFilter();
             //Registry registry = LocateRegistry.createRegistry(Integer.parseInt(args[0]));
-            Registry registry = LocateRegistry.createRegistry(7770);
-            registry.rebind("RemoteBloomFilter", filter);
+            RemoteBloomFilter filter = new RemoteBloomFilter();
+            Registry registry = LocateRegistry.createRegistry(PORT);
+            //Registry registry = LocateRegistry.getRegistry();
+            registry.rebind(SERVICE_NAME, filter);
             System.out.println("Remote bloom filter starts");
         } catch (RemoteException e) {
             e.printStackTrace();
