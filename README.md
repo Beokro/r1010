@@ -89,6 +89,8 @@ Backup -> backup listenling port
             Server -> current size
             Server -> clique size
             Server -> current graph
+            Server -> lastResult
+            Server -> lastGraph
             Backup -> sync complete
 
 ## for sync that happens every 2 minutes
@@ -98,12 +100,20 @@ Backup -> backup listenling port
             Server -> first candidate address
             Server -> first candidate port
 
-### case E main server has better clique or problem size changed
+### case E main server has better clique
             Backup -> graph request
             Server -> current graph
             Backup -> sync complete
 
 ### case F clique size and problem size both not change
+            Backup -> sync complete
+
+### case G main server problem size changed
+            Backup -> graph request
+            Server -> current graph
+            Backup -> last answer request
+            Server -> last size
+            Server -> last graph
             Backup -> sync complete
             
 
