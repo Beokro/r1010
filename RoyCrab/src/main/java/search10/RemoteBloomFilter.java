@@ -11,7 +11,7 @@ public class RemoteBloomFilter extends UnicastRemoteObject {
     private int currentSize;
     private TcpClient tcpClient;
     private long CAP = 4000000L;
-    private double fpp = 0.0000001;
+    private double fpp = 0.00000001;
     private long elements = 0;
     private Funnel<int[][]> graphFunnel = new Funnel<int[][]>() {
         @Override
