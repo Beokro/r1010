@@ -28,8 +28,6 @@
 *.out
 *.app
 
-Cliques/target
-
 # vim
 .*.swp
 
@@ -39,4 +37,4 @@ Cliques/target
 # log file
 *.log
 
-RoyCrab/target
+RoyCrab/target/*/
