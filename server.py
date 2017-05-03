@@ -24,8 +24,7 @@ syncRequestMessage = 'syncReq'
 syncCompleteMessage = 'syncCom'
 firstBackup = 'first'
 normalBackup = 'normal'
-lastAnswerRequest = 'lastAnsReq'
-backupSyncTime = 60
+backupSyncTime = 120
 
 
 class TcpServer( object ):
@@ -50,7 +49,6 @@ class TcpServer( object ):
         self.sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
         self.sock.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
         self.sock.bind( ( self.host, self.port ) )
-        self.liveConnection = 0
         logging.basicConfig( format = '%(asctime)s %(levelname)s: %(message)s',
                              filename = self.logDir,
                              level = logging.DEBUG )
@@ -99,7 +97,7 @@ class TcpServer( object ):
             return res
 
     def listen( self ):
-        self.sock.listen( 800 )
+        self.sock.listen( 200 )
         if self.backup:
             tt = threading.Thread( target = self.contactMainServer )
             tt.daemon = True
@@ -107,8 +105,7 @@ class TcpServer( object ):
         while True:
             client, address = self.sock.accept()
             # need to be more careful about the timeout
-            client.settimeout( 60 )
-            self.liveConnection += 1
+            # client.settimeout( 60 )
             self.counter += 1
             t = threading.Thread( target = self.handleClient,
                                   args = ( client, address, str( self.counter ) ) )
@@ -127,7 +124,6 @@ class TcpServer( object ):
     def contactMainServer( self ):
         # create a new sock and connect to server
         backupSock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
-        backupSock.settimeout( 60 )
         try:
             backupSock.connect( ( self.destHost, self.destPort ) )
         except:
@@ -142,6 +138,7 @@ class TcpServer( object ):
         global syncRequestMessage
         global syncCompleteMessage
 
+        print 'sent my port to server'
         self.sendPacket( backupSock, [ serverClaimMessage, str( self.port ) ] )
         '''
             Server -> address of first candidate
@@ -161,13 +158,12 @@ class TcpServer( object ):
             Backup -> sync complete
         '''
         self.sendPacket( backupSock, [ syncRequestMessage ] )
-        data = self.recvPacket( backupSock, 40 + 850 * 850 * 2 )
+        data = self.recvPacket( backupSock, 40 + 850 * 850 )
         self.lock.acquire()
 
         self.currentSize = int( data[ 0 ] )
         self.cliqueSize = int( data[ 1 ] )
         self.graph = data[ 2 ]
-        self.recordAnswer( data[ 3 ], data[ 4 ] )
 
         self.lock.release()
         self.sendPacket( backupSock, [ syncCompleteMessage ] )
@@ -191,7 +187,6 @@ class TcpServer( object ):
             Server -> first candidate port
         '''
         global backupSyncTime
-        global lastAnswerRequest
         while True:
             time.sleep( backupSyncTime )
             self.doLogging( 'periodic sync start', ' ', isServer = True )
@@ -207,16 +202,12 @@ class TcpServer( object ):
             self.firstCandidateAddr = data[ 2 ]
             self.firstCandidatePort = int( data[ 3 ] )
 
-            if self.currentSize != currentSize or  self.cliqueSize > cliqueSize:
+            if self.currentSize != currentSize or self.cliqueSize > cliqueSize:
                 self.currentSize = currentSize
                 self.cliqueSize = cliqueSize
                 self.sendPacket( backupSock, [ requestMessage ] )
                 data = self.recvPacket( backupSock, self.currentSize * self.currentSize + 10 )
                 self.currentGraph = data[ 0 ]
-                if self.currentSize != currentSize:
-                    self.sendPacket( backupSock, [ lastAnswerRequest ] )
-                    data = self.recvPacket( backupSock, 800 * 800 + 10 )
-                    self.recordAnswer( data[ 0 ], data[ 1 ] )
 
             self.sendPacket( backupSock, [ syncCompleteMessage ] )
             self.doLogging( 'currentSize = ' + str( self.currentSize ) +\
@@ -257,6 +248,7 @@ class TcpServer( object ):
 
 
     def handleClient( self, client, address, clientID ):
+        print 'here'
         self.doLogging( 'new connection establish', clientID )
         # send my currentSize and graph to the clinet to start the computation
         self.lock.acquire()
@@ -266,15 +258,7 @@ class TcpServer( object ):
             self.handleClientToServer( client, address, clientID )
         else:
             print 'it is a server'
-            try:
-                self.handleServerToServer( client, address, clientID, data[ 1 ] )
-            except:
-                print 'server to server failed\n'
-                exc_type, exc_obj, exc_tb = sys.exc_info()
-                fname = os.path.split( exc_tb.tb_frame.f_code.co_filename ) [ 1 ]
-                print ( exc_type, fname, exc_tb.tb_lineno )
-                client.close()
-                return
+            self.handleServerToServer( client, address, clientID, data[ 1 ] )
 
     # ********************************************************
     # *********************************************
@@ -299,8 +283,6 @@ class TcpServer( object ):
             Server -> current size
             Server -> clique size
             Server -> current graph
-            Server -> last reuslt
-            Server -> last graph
             Backup -> sync complete
         '''
         firstCandidateResponse = normalBackup
@@ -312,14 +294,16 @@ class TcpServer( object ):
 
         self.sendPacket( client, [ self.firstCandidateAddr,
                                    str( self.firstCandidatePort ),
-                                   firstCandidateResponse ] )
+                                        firstCandidateResponse ] )
         data = self.recvPacket( client, 20 )[ 0 ]
         if data != syncRequestMessage:
             self.handleUnexpectMessage( client, syncRequestMessage, data, clientID, True )
             return
 
         self.lock.acquire()
-        self.sendLastAnswerToBackUp( client, currentStatus = True )
+        self.sendPacket( client, [ str( self.currentSize ),
+                                   str( self.cliqueSize ),
+                                   str( self.currentGraph ) ] )
         self.lock.release()
         data = self.recvPacket( client, 20 )[ 0 ]
         if data != syncCompleteMessage:
@@ -335,7 +319,7 @@ class TcpServer( object ):
                 else:
                     self.doLogging(  'backup server disconnected', clientID, 'warning' )
                     # to do, handle backup server disconnect
-                    raise Exception( 'backup server disconnected' )
+                    raise error( 'backup server disconnected' )
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split( exc_tb.tb_frame.f_code.co_filename ) [ 1 ]
@@ -348,7 +332,6 @@ class TcpServer( object ):
         global syncRequestMessage
         global syncCompleteMessage
         global requestMessage
-        global lastAnswerRequest
         '''
             Backup -> sync request
             Server -> current size
@@ -380,30 +363,10 @@ class TcpServer( object ):
         '''
             Backup -> sync complete
         '''
-        if data == lastAnswerRequest:
-            self.sendLastAnswerToBackUp( client )
-            data = self.recvPacket( client, 20 )[ 0 ]
         if data != syncCompleteMessage:
             self.handleUnexpectMessage( client, syncCompleteMessage, data, clientID, True )
             return
         self.doLogging( 'data sync complete', clientID, isServer = True )
-
-    def sendLastAnswerToBackUp( self, client, currentStatus = False ):
-        with open( 'answer' ) as f:
-            content = f.readlines()
-
-        content = [ x.strip() for x in content ]
-        listSize = len( content )
-        lastResult = content[ listSize - 4 ] 
-        lastGraph = content[ listSize - 3 ]
-        if currentStatus:
-            self.sendPacket( client, [ str( self.currentSize ),
-                                       str( self.cliqueSize ),
-                                       str( self.currentGraph ),
-                                       lastResult,
-                                       lastGraph ] )
-        else:
-            self.sendPacket( client, [ lastResult, lastGraph ] )
 
     # end of handle server is backup server
 
@@ -433,9 +396,6 @@ class TcpServer( object ):
                     self.handleClique( data, client, clientID )
                 else:
                     self.doLogging(  'client disconnected', clientID, 'warning' )
-                    self.liveConnection -= 1
-                    self.doLogging(  'remaining connection # = ' + str( self.liveConnection ),
-                                     clientID )
                     raise Exception( 'Client disconnected' )
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -531,15 +491,10 @@ class TcpServer( object ):
             self.doLogging( 'exchange complete', clientID )
             self.sendPacket( client, [ tranmissionCompleteMessage ] )
 
-    def recordAnswer( self, size = ' ', graph = ' ' ):
-        if size == ' ':
-            size = self.currentSize
-        if graph == ' ':
-            graph = self.currentGraph
-
+    def recordAnswer( self ):
         with open("answer", "a+") as myfile:
-                myfile.write( size + '\n' )
-                myfile.write( graph + '\n\n\n' )
+                myfile.write( str( self.currentSize ) + '\n' )
+                myfile.write( self.currentGraph + '\n\n\n' )
 
     def denyNewGraph( self, client, tie, clientID ):
         # deny the matrix, not need to send if it is worse than current one
@@ -626,10 +581,9 @@ def usage():
 
 if __name__ == "__main__":
     try:
-        opts, args = getopt.getopt( sys.argv[ 1: ], "p:ht:l:a:d:bc:r",
+        opts, args = getopt.getopt( sys.argv[ 1: ], "p:ht:l:a:d:bc:",
                                     [ "port=", "help", "timeout=", "log=",
-                                      "addrdest=", "destport", "backup", "currentSize=",
-                                      "roymode" ] )
+                                      "addrdest=", "destport", "backup", "currentSize=" ] )
     except getopt.GetoptError as err:
         print str( err )
         usage()
@@ -661,11 +615,6 @@ if __name__ == "__main__":
             backup = True
         elif o in ( "-c", "--currentSize" ):
             currentSize = int( a )
-        elif o in ( "-r", "--roymode" ):
-            port = 7789
-            destIp = '98.185.210.172'
-            destPort = 7788
-            backup = True
         else:
             assert False, "unhandled option"
 
