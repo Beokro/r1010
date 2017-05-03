@@ -304,7 +304,7 @@ public class Alg {
         long current = Long.MAX_VALUE;                                      
         currentSize = client.getCurrentSize();
         history.currentSize = currentSize;
-        TABU_CAP = currentSize * 2;
+        TABU_CAP = currentSize * 10;
         long timestamp = System.currentTimeMillis();
         Random rand = new Random(timestamp);
         
@@ -318,34 +318,27 @@ public class Alg {
                     timestamp = System.currentTimeMillis();
                 }
             }
-            int n = rand.nextInt(2);                                          
-            if(n == 0) {
-                current = getRandomNeighbor();
-                if(current < cliques) { 
-                    accept();
-                    if(current <= cliques / 10 * 9 || current < 1000) {
-                        client.updateFromAlg(currentSize, current, graph2d);
-                        if(currentSize < client.getCurrentSize() ||
-                                current > client.getCliqueSize()) {
-                            return;
-                        }
-                    }
-                    cliques = current;                                            
-                } else {                                                          
-                    double prob =                                                 
-                        Math.pow(Math.E, ((double)(cliques - current))/((double)t1));
-                    if(prob >= rand.nextDouble() + 0.0000001) { 
-                        accept();
-                        cliques = current;
-                    }                                                             
-                    t1 -= 1;
-                    t1 = Math.min(t1, t0);
-                }  
-            } else {                                                          
-                current = getBestNeighbor();
-                cliques = current;
+            current = getRandomNeighbor();
+            if(current < cliques) { 
                 accept();
-            }  
+                if(current <= cliques / 10 * 9 || current < 1000) {
+                    client.updateFromAlg(currentSize, current, graph2d);
+                    if(currentSize < client.getCurrentSize() ||
+                            current > client.getCliqueSize()) {
+                        return;
+                    }
+                }
+                cliques = current;                                            
+            } else {                                                          
+                double prob =                                                 
+                    Math.pow(Math.E, ((double)(cliques - current))/((double)t1));
+                if(prob >= rand.nextDouble() + 0.0000001) { 
+                    accept();
+                    cliques = current;
+                }                                                             
+                t1 -= 1;
+                t1 = Math.min(t1, t0);
+            }
             updateTabu(this.change);
         }
         client.updateFromAlg(currentSize, cliques, graph2d);
