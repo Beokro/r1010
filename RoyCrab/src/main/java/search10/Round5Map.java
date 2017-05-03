@@ -7,38 +7,33 @@ import java.util.ArrayList;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.concurrent.LinkedBlockingQueue;
 
 
 public class Round5Map extends Thread {
     
-    public static ConcurrentMap<Edge, Set<Integer>> input;
-    public static ConcurrentMap<Integer, List<Edge>> result;
-    private static Object firstlock;
-    private static Object secondlock;
+    public static ConcurrentMap<Edge, ConcurrentMap<Integer, Integer>> input;
+    public static ConcurrentMap<Integer, BlockingQueue<Edge>> result;
+    private static Object lock;
 
     Round5Map() {
         input = Round4Red.result;
-        result = new ConcurrentHashMap<>();
-        firstlock = new Object();
-        secondlock = new Object();
+        result = new ConcurrentHashMap<Integer, BlockingQueue<Edge>>();
+        lock = new Object();
     }
     public void run() {
         while(!input.isEmpty()) {
-            Map.Entry<Edge, Set<Integer>> entry = null;
-            synchronized(firstlock) {
+            Map.Entry<Edge, ConcurrentMap<Integer, Integer>> entry = null;
+            synchronized(lock) {
                 if(input.isEmpty()) {
                     break;
                 }
                 entry = input.entrySet().iterator().next();
                 input.remove(entry.getKey());
             }
-            for(int node : entry.getValue()) {
-                synchronized(secondlock) {
-                    if(!result.containsKey(node)) {
-                        result.put(node, new ArrayList<Edge>());
-                    }
-                    result.get(node).add(entry.getKey());
-                }
+            for(int node : entry.getValue().keySet()) {
+                result.putIfAbsent(node, new LinkedBlockingQueue<Edge>());
+                result.get(node).add(entry.getKey());
             }
         }
     }

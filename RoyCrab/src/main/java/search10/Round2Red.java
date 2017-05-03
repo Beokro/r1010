@@ -9,21 +9,21 @@ import java.util.Map;
 
 public class Round2Red extends Thread {
     
-    public static ConcurrentMap<Integer, List<NodeDeg>> input;
+    public static ConcurrentMap<Integer, BlockingQueue<NodeDeg>> input;
     public static BlockingQueue<NodeDegPair> result;
     public static BlockingQueue<NodeDegPair> save;
     private static Object lock;
 
     Round2Red() {
         input = Round2Map.result;
-        result = new LinkedBlockingQueue<>();
-        save = new LinkedBlockingQueue<>();
+        result = new LinkedBlockingQueue<NodeDegPair>();
+        save = new LinkedBlockingQueue<NodeDegPair>();
         lock = new Object();
     }
 
     public void run() {
         while(!input.isEmpty()) {
-            Map.Entry<Integer, List<NodeDeg>> entry = null;
+            Map.Entry<Integer, BlockingQueue<NodeDeg>> entry = null;
             synchronized(lock) {
                 if(input.isEmpty()) {
                     break;
@@ -32,7 +32,7 @@ public class Round2Red extends Thread {
                 input.remove(entry.getKey());
             }
             int node = entry.getKey();
-            List<NodeDeg> neighbors = entry.getValue();
+            BlockingQueue<NodeDeg> neighbors = entry.getValue();
             int degree = neighbors.size();
             for(NodeDeg neighbor : neighbors) {
                 if(Alg.doubleCheck(node, degree, neighbor.node, neighbor.degree)) {

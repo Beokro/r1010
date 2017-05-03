@@ -1,12 +1,22 @@
 package search10;
-import java.util.Deque;
-import java.util.ArrayDeque;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.Random;
+import java.rmi.RemoteException;
+import java.rmi.registry.Registry;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.NotBoundException;
+import java.net.MalformedURLException;
+import com.google.common.hash.*;
+
 
 class NodeDeg {
     int node;
@@ -21,8 +31,7 @@ class NodeDeg {
             return false;
         }
         NodeDeg temp = (NodeDeg)o;
-        boolean haha = node == temp.node && degree == temp.degree;
-        return haha;
+        return node == temp.node && degree == temp.degree;
     }
 
     @Override
@@ -95,26 +104,150 @@ class NodeDegPair {
 
 public class Alg {
     public static TcpClient client;
-    public static Deque<Edge> graph = new ArrayDeque<>();
-    public static int[][] graph2d;
+    public static List<Edge> graph = new ArrayList<Edge>();
+    public int[][] graph2d;
+    private int currentSize;
+    private int change = -1;
+    RemoteBloomFilter sharedHis;
+    BloomFilter<int[][]> tempHist;
+    List<Integer> tabuList = new LinkedList<Integer>();
+    Set<Integer> tabuSet = new HashSet<Integer>();
+    int TABU_CAP;
 
-    Alg(String destHost, int destPort) {
-        client = new TcpClient(destHost, destPort);
+    Alg(int filterPort) throws 
+                        RemoteException, NotBoundException, MalformedURLException {
+        client = new TcpClient("98.185.210.172", 7788);
+        client.run();
+        Registry reg = LocateRegistry.getRegistry("98.185.210.172", filterPort);
+        sharedHis = (RemoteBloomFilter) reg.lookup("RemoteBloomFilter");
     }
 
-    private static void createGraph() {
-        int size = client.getCurrentSize();
-        Round1Map.graph = new LinkedBlockingQueue<>();
-        size = 11;
+    Edge flip(Edge input) {
+        if(input.node1 < currentSize) {
+            return new Edge(input.node1 + currentSize, input.node2 + currentSize);
+        } else {
+            return new Edge(input.node1 - currentSize, input.node2 - currentSize);
+        }
+    }
+
+    private void clearTabu() {
+        tabuList = new LinkedList<Integer>();
+        tabuSet = new HashSet<Integer>();
+    }
+    private void updateTabu(int change) {
+        tabuList.add(change);
+        tabuSet.add(change);
+        if(tabuList.size() > TABU_CAP) {
+            int old = tabuList.get(0);
+            tabuList.remove(0);
+            tabuSet.remove(old);
+        }
+    }
+
+    private void addHistory(int change) throws RemoteException {
+        Funnel<int[][]> graphFunnel = new Funnel<int[][]>() {
+            @Override
+            public void funnel(int[][] graph2d, PrimitiveSink into) {
+                for(int i = 0; i < currentSize; i++) {
+                    for(int j = i + 1; j < currentSize; j++) {
+                        into.putInt(graph2d[i][j]);
+                    }
+                }
+            }
+        };
+        tempHist = BloomFilter.create(graphFunnel, 40000000L, 0.00001);
+        tempHist.put(graph2d);
+        sharedHis.addHistory(tempHist);
+    }
+
+    private void accept() {
+        Round1Map.graph.put(this.change, flip(Round1Map.graph.get(this.change))); 
+        Edge temp = graph.get(this.change);
+        if(temp.node1 >= currentSize) {
+            temp = flip(temp);
+        }
+        graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
+        graph.set(change, temp);
+    }
+
+    private boolean hasVisited(int change) {
+        if(tabuSet.contains(change)) {
+            return true;
+        }
+        boolean result = false;
+        Edge temp = graph.get(change);
+        if(temp.node1 >= currentSize) {
+            temp = flip(temp);
+        }
+        graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
+        try {
+            result = sharedHis.inHistory(graph2d);
+        } catch(RemoteException e) {
+            e.printStackTrace();
+        }
+        graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
+        return result;
+    }
+
+    private long getBestNeighbor() {
+        int change = -1;
+        long min = Long.MAX_VALUE;
+        for(int i = 0; i < graph.size(); i++) {
+            change = i;
+            if(hasVisited(change)) {
+                continue;
+            }
+            Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
+            long current = countCliques();
+            try {
+                addHistory(change);
+            } catch(RemoteException e) {
+                e.printStackTrace();
+            }
+            Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
+            if(current < min) {
+                min = current;
+                this.change = change;
+                if(min == 0) {
+                    break;
+                }
+            }
+        }
+        return min;
+    }
+
+    private long getRandomNeighbor() {
+        Random rand = new Random(System.currentTimeMillis());             
+        int change = rand.nextInt(graph.size());
+        while(hasVisited(change)) {
+            change = rand.nextInt(currentSize);
+        }
+        this.change = change;
+        Round1Map.graph.put(change, flip(Round1Map.graph.get(change)));
+        long result = countCliques();
+        try {
+            addHistory(change);
+        } catch(RemoteException e) {
+            e.printStackTrace();
+        }
+        Round1Map.graph.put(change, flip(Round1Map.graph.get(change)));
+        return result;
+    }
+
+    private void createGraph() {
+        int size = graph2d.length;
+        Round1Map.graph = new ConcurrentHashMap<Integer, Edge>();
+        int count = 0;
         for(int i = 0; i < size; i++) {
             for(int j = i + 1; j < size; j++) {
                 if(graph2d[i][j] == 1) {
                     graph.add(new Edge(i, j));
-                    Round1Map.graph.offer(new Edge(i, j));
+                    Round1Map.graph.put(count, new Edge(i, j));
                 } else {
                     graph.add(new Edge(i + size, j + size));
-                    Round1Map.graph.offer(new Edge(i + size, j + size));
+                    Round1Map.graph.put(count, new Edge(i + size, j + size));
                 }
+                count += 1;
             }
         }
     }
@@ -123,70 +256,147 @@ public class Alg {
         if(degree1 < degree2) {
             return true;
         }
-        if(degree1 == degree2 && node1 < node2) {
-            return true;
-        }
-        return false;
+        return degree1 == degree2 && node1 < node2;
     }
 
     private void runRound(int round, int cores) {
-        Deque<Thread> threads = new ArrayDeque<Thread>();
-        for(int i = 0; i < cores; i++) {
+        List<Thread> mappers = new ArrayList<Thread>();
+        List<Thread> reducers = new ArrayList<Thread>();
+        int workers = cores;
+        for(int i = 0; i < workers; i++) {
             MapRed thisRound = RoundFactory.makeRound(round);
-            threads.addFirst(thisRound.map);
-            threads.addLast(thisRound.reduce);
+            mappers.add(0, thisRound.map);
+            reducers.add(thisRound.reduce);
         }
-        for(Thread thread : threads) {
-            thread.start();
+        
+        // start maps
+        for(int i = 0; i < workers; i++) {
+            mappers.get(i).start();
         }
-        for(Thread thread : threads) {
-            try {
-                thread.join();
+        //end maps
+        for(int i = 0; i < workers; i++) {
+           try {
+                mappers.get(i).join();
             } catch(InterruptedException e) {
                 e.printStackTrace();
-            }
+            } 
         }
+        
+        // start reds
+        for(int i = 0; i < workers; i++) {
+            reducers.get(i).start();
+        }
+        //end reds
+        for(int i = 0; i < workers; i++) {
+           try {
+                reducers.get(i).join();
+            } catch(InterruptedException e) {
+                e.printStackTrace();
+            } 
+        }
+        
     }
 
-    private int countCliques() {
+    private long countCliques() {
         int cores = Runtime.getRuntime().availableProcessors();
-
-        // something to setup Round1Map.graph
-        runRound(1, cores); 
+        runRound(1, cores);
+        Round1Map.graph = Round1Map.save;
+        Round1Map.save = new ConcurrentHashMap<Integer, Edge>();
         runRound(2, cores); 
         runRound(3, cores); 
         runRound(4, cores); 
         runRound(5, cores); 
-        int cliques = 0;
-        for(int i : Round5Red.result.values()) {
+        long cliques = 0;
+        for(long i : Round5Red.result.values()) {
             if(cliques > cliques + i) {
-                return Integer.MAX_VALUE;
+                return Long.MAX_VALUE;
             } else {
                 cliques += i;
             }
         }
         return cliques;
     }
-    public static void main( String[] args ) {
-        //if(args.length < 2) {
-        //    System.err.println("Usage: java -jar <jar executable> <destHost> <destPort>");
-        //    return;
-        //}
-        //String destHost = args[0];
-        //int destPort = Integer.parseInt(args[1]);
-        String destHost = "haha";
-        int destPort = 10;
-        Alg haha = new Alg(destHost, destPort);
-        Alg.graph2d = new int[11][];
-        for(int i = 0; i < 11; i++) {
-            Alg.graph2d[i] = new int[11];
+
+    public void start() {
+
+        int t0 = 5, t1 = 100000;
+        long timestamp = System.currentTimeMillis();
+        long interval = 600000L;
+        graph2d = client.getGraph();
+        graph = new ArrayList<Edge>();
+        createGraph();
+        long cliques = countCliques();
+        long current = Long.MAX_VALUE;                                      
+        Random rand = new Random(System.currentTimeMillis());
+        currentSize = client.getCurrentSize();
+        TABU_CAP = currentSize * 2;
+
+        while(cliques != 0) {
+            if(System.currentTimeMillis() - timestamp >= interval) {
+                client.updateFromAlg(currentSize, cliques, graph2d);
+                if(currentSize < client.getCurrentSize() ||
+                        cliques - client.getCliqueSize() > 10) {
+                    return;
+                } else {
+                    timestamp = System.currentTimeMillis();
+                }
+            }
+            int n = rand.nextInt(2);                                          
+            if(n == 0) {
+                current = getRandomNeighbor();
+                if(current < cliques) { 
+                    accept();
+                    if(current <= cliques / 10 * 9 || current < 1000) {
+                        client.updateFromAlg(currentSize, current, graph2d);
+                        if(currentSize < client.getCurrentSize() ||
+                                current > client.getCliqueSize()) {
+                            return;
+                        }
+                    }
+                    cliques = current;                                            
+                } else {                                                          
+                    double prob =                                                 
+                        Math.pow(Math.E, ((double)(cliques - current))/((double)t1));
+                    if(prob - rand.nextDouble() >= 0.0000001) { 
+                        accept();
+                        cliques = current;
+                    }                                                             
+                    t1 -= 1;
+                    t1 = Math.min(t1, t0);
+                }  
+            } else {                                                          
+                current = getBestNeighbor();
+                cliques = current;
+                accept();
+            }  
+            updateTabu(this.change);
         }
-        for(int i = 0; i < 11; i++) {
-            for(int j = 0; j < 11; j++) {
-                Alg.graph2d[i][j] = 1;
+        client.updateFromAlg(currentSize, cliques, graph2d);
+    }
+
+    public static void main( String[] args ) {
+        
+        //if(args.length < 1) {
+        //    System.out.println("Usage: java -jar <executable> <filter port number>");
+        //}
+        Alg excalibur = null;
+        try {
+            //excalibur = new Alg(Integer.parseInt(args[0]));
+            excalibur = new Alg(7770);
+        } catch(Exception e) {
+            e.printStackTrace();
+            return;
+        }
+        while(true) {
+            excalibur.start();
+            if(excalibur.currentSize < client.getCurrentSize()) {
+                try {
+                    excalibur.sharedHis.refresh();
+                } catch(RemoteException e) {
+                    e.printStackTrace();
+                }
+                excalibur.clearTabu();
             }
         }
-        Alg.createGraph();
-        System.out.println(haha.countCliques());
     }
 }

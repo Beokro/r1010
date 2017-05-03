@@ -37,7 +37,7 @@ public class TcpClient {
     private String destHost;
     private int destPort;
     private int currentSize = 0;
-    private int cliqueSize = Integer.MAX_VALUE;
+    private long cliqueSize = Long.MAX_VALUE;
     private String currentGraph = " ";
     private String backupAddr = " ";
     private int backupPort = -1;
@@ -54,7 +54,7 @@ public class TcpClient {
         return currentSize;
     }
 
-    public int getCliqueSize() {
+    public long getCliqueSize() {
         return cliqueSize;
     }
 
@@ -68,7 +68,7 @@ public class TcpClient {
             sockReader = new BufferedReader( new InputStreamReader( sock.getInputStream() ) );
             sockWriter = new BufferedWriter( new OutputStreamWriter( sock.getOutputStream()) );
         } catch ( IOException i ) {
-            System.out.println( "failed to connect to host" );
+            //System.out.println( "failed to connect to host" );
             i.printStackTrace();
             return false;
         }
@@ -88,18 +88,18 @@ public class TcpClient {
         backupAddr = read();
         backupPort = Integer.parseInt( read() );
         currentSize = Integer.parseInt( read() );
-        cliqueSize = Integer.parseInt( read() );
+        cliqueSize = Long.parseLong( read() );
         currentGraph = read();
-        System.out.println( "Client start to work on problem with size " +
-                            Integer.toString( currentSize ) + " and clique size " +
-                            Integer.toString( cliqueSize ) );
+        //System.out.println( "Client start to work on problem with size " +
+        //                    Integer.toString( currentSize ) + " and clique size " +
+        //                    Long.toString( cliqueSize ) );
 
     }
 
     // call by algorithm, start the exchange with server
     // if graph from update is invalid, graph will be empty
     // the reuslt graph return by getter will be all -1
-    public void updateFromAlg( int problemSize, int cliqueSize, int[][] graph ) {
+    public void updateFromAlg( int problemSize, long cliqueSize, int[][] graph ) {
         this.currentSize = problemSize;
         this.cliqueSize = cliqueSize;
         this.currentGraph = translateGraphToString( graph );
@@ -141,7 +141,7 @@ public class TcpClient {
 
         for ( int i = 0; i < currentSize; i++ ) {
             for ( int j = 0; j < currentSize; j++ ) {
-                message[ i ][ j ] = graph.charAt( counter );
+                message[ i ][ j ] = graph.charAt( counter ) - 48;
                 counter++;
             }
         }
@@ -152,19 +152,19 @@ public class TcpClient {
     public void startExchange() {
         String message;
 
-        System.out.println( "exchange start" );
+        //System.out.println( "exchange start" );
         write( new String[] { exchangeStartMessage } );
         message = read();
         if ( !message.equals( exchangeConfirmedMessage ) ) {
-            System.out.println( "message = " + message );
-            System.out.println( "expecting = " + exchangeConfirmedMessage );
+            //System.out.println( "message = " + message );
+            //System.out.println( "expecting = " + exchangeConfirmedMessage );
             // exchange is not sync with server, end conversion
             return;
         }
         backupAddr = read();
         backupPort = Integer.parseInt( read() );
         write( new String[] { Integer.toString( currentSize ),
-                              Integer.toString( cliqueSize )} );
+                              Long.toString( cliqueSize )} );
         message = read();
         if ( message.equals( requestMessage ) ) {
             // case A_0 and case A_1
@@ -175,26 +175,26 @@ public class TcpClient {
         } else if ( message.equals( problemSizeChangedMessage ) ) {
             handleProblemSizeChanged();
         } else {
-            System.out.println( "Unexpected message from server " + message );
+            //System.out.println( "Unexpected message from server " + message );
         }
     }
 
     public void handleRequestGraph() {
         String message = "";
-        System.out.println( "server request client side graph" );
+        //System.out.println( "server request client side graph" );
         write( new String[] { currentGraph } );
         message = read();
 
         if ( message.equals( errorMessage ) ) {
             // case A_0.2, case A_1.2
-            System.out.println( "client side graph is corrupted or invalid" );
+            //System.out.println( "client side graph is corrupted or invalid" );
             return;
         } else if ( message.equals( problemSizeChangedMessage ) ) {
             // case A_0.1
             handleProblemSizeChanged();
         } else if ( message.equals( tranmissionCompleteMessage ) ) {
             // case A_1.1
-            System.out.println( "exchange complete" );
+            //System.out.println( "exchange complete" );
         } else {
             unpextedMessage( tranmissionCompleteMessage, message );
         }
@@ -204,30 +204,30 @@ public class TcpClient {
     public void handleProblemSizeChanged() {
         String message = "";
         this.currentSize = Integer.parseInt( read() );
-        this.cliqueSize = Integer.parseInt( read() );
+        this.cliqueSize = Long.parseLong( read() );
         this.currentGraph = read();
-        System.out.println( "problem size not matched with server, now = " + this.currentSize );
+        //System.out.println( "problem size not matched with server, now = " + this.currentSize );
         message = read();
         if ( message.equals( tranmissionCompleteMessage ) ) {
-            System.out.println( "exchange complete" );
+            //System.out.println( "exchange complete" );
         } else {
             unpextedMessage( tranmissionCompleteMessage, message );
         }
     }
 
     public void unpextedMessage( String expecting, String got ) {
-        System.out.println( "expecting " + expecting );
-        System.out.println( "got " + got );
+        //System.out.println( "expecting " + expecting );
+        //System.out.println( "got " + got );
     }
 
     public void handleDeny() {
         String message = read();
         if ( message.equals( tieMessage ) ) {
-            System.out.println( "server and client haave same clique" );
+            //System.out.println( "server and client haave same clique" );
         } else {
-            this.cliqueSize = Integer.parseInt( message );
+            this.cliqueSize = Long.parseLong( message );
             this.currentGraph = read();
-            System.out.println( "server has better clique " + message );
+            //System.out.println( "server has better clique " + message );
         }
     }
 
@@ -247,7 +247,7 @@ public class TcpClient {
         try {
             return sockReader.readLine();
         } catch( IOException i ) {
-            System.out.println( "failed to read from host" );
+            //System.out.println( "failed to read from host" );
             i.printStackTrace();
             return readFailedMessage;
         }
@@ -263,8 +263,8 @@ public class TcpClient {
             }
             sockWriter.write( message.toString() );
             sockWriter.flush();
-        } catch( IOException i ) {
-            System.out.println( "failed to send message to host" );
+        } catch( Exception i ) {
+            //System.out.println( "failed to send message to host" );
             i.printStackTrace();
             return;
         }
@@ -275,7 +275,7 @@ public class TcpClient {
         try {
             sock.close();
         } catch( IOException i ) {
-            System.out.println( "failed to close the connection with server" );
+            //System.out.println( "failed to close the connection with server" );
             i.printStackTrace();
             return;
         }
@@ -283,7 +283,7 @@ public class TcpClient {
 
 
     public static void main( String[] args ) {
-        TcpClient client = new TcpClient( "localhost", 7788 );
+        TcpClient client = new TcpClient( "192.168.0.14", 7788 );
         Random rand = new Random();
         int reduce = 0;
         int currentClique = 500;

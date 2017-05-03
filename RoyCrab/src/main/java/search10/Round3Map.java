@@ -5,20 +5,18 @@ import java.util.concurrent.BlockingQueue;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.concurrent.LinkedBlockingQueue;
 
 
 public class Round3Map extends Thread {
     
     public static BlockingQueue<NodeDegPair> input;
     public static ConcurrentMap<NodeDeg, List<NodeDeg>> result;
-    private static Object firstlock;
-    private static Object secondlock;
+    private Object lock = new Object();
 
     Round3Map() {
         input = Round2Red.result;
-        result = new ConcurrentHashMap<>();
-        firstlock = new Object();
-        secondlock = new Object();
+        result = new ConcurrentHashMap<NodeDeg, List<NodeDeg>>();
     }
     public void run() {
         while(!input.isEmpty()) {
@@ -29,10 +27,8 @@ public class Round3Map extends Thread {
             }
             NodeDeg node = one.node1;
             NodeDeg neighbor = one.node2;
-            synchronized(secondlock) {
-                if(!result.containsKey(node)) {
-                    result.put(node, new ArrayList<NodeDeg>());
-                }
+            result.putIfAbsent(node, new ArrayList<NodeDeg>());
+            synchronized(lock) {
                 result.get(node).add(neighbor);
             }
         }

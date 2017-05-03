@@ -5,6 +5,9 @@ import os
 import logging
 import getopt
 import time
+import random
+import textwrap
+from random import randint
 
 requestMessage = 'request'
 denyMessage = 'deny'
@@ -21,7 +24,7 @@ syncRequestMessage = 'syncReq'
 syncCompleteMessage = 'syncCom'
 firstBackup = 'first'
 normalBackup = 'normal'
-backupSyncTime = 5
+backupSyncTime = 120
 
 
 class TcpServer( object ):
@@ -40,8 +43,8 @@ class TcpServer( object ):
         self.firstCandidate = False
         self.lock = threading.Lock()
         self.currentSize = currentSize
-        self.currentGraph = self.defaultGraph()
-        self.cliqueSize = 111111111
+        self.currentGraph = self.generateGraph()
+        self.cliqueSize = sys.maxsize
         self.counter = 0
         self.sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
         self.sock.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
@@ -52,11 +55,50 @@ class TcpServer( object ):
                              level = logging.DEBUG )
         self.doLogging( 'server run on address: ' + host + ' port: ' + str( port ), '-1' )
 
-    def defaultGraph( self ):
-        return '0' * ( currentSize * currentSize )
+    def generateGraph( self ):
+        with open( 'answer' ) as f:
+            content = f.readlines()
+
+        content = [ x.strip() for x in content ]
+        listSize = len( content )
+        lastResult = int( content[ listSize - 4 ] )
+
+        if self.currentSize != -1:
+            target = self.currentSize
+        else:
+            self.currentSize = target = lastResult + 1
+
+        possibleIndex = ( target - 25 - 1 ) * 4
+        if target < 25 or target - 1 > lastResult or int( content[ possibleIndex ] ) != target - 1:
+            print 'random generate targe = ' + str( target )
+            return self.defaultGraph( True )
+        else:
+            self.currentGraph = content[ possibleIndex + 1 ]
+            print 'use answer, generate graph for ' + str( self.currentSize )
+            return self.defaultGraph()
+
+    def defaultGraph( self, rand = False ):
+        if rand:
+            num = self.currentSize * self.currentSize
+            index = 0
+            res = [ '' ]
+            while index < num:
+                res.append( str( randint( 0, 1 ) ) )
+                index += 1
+            return ''.join( res )
+        else:
+            res = ''
+            index = 0
+            glists = textwrap.wrap( self.currentGraph ,  self.currentSize - 1 )
+            for g in glists:
+                res += g + str( randint( 0, 1 ) )
+            while index < self.currentSize:
+                res += str( randint( 0, 1 ) )
+                index += 1
+            return res
 
     def listen( self ):
-        self.sock.listen( 200 )
+        self.sock.listen( 800 )
         if self.backup:
             tt = threading.Thread( target = self.contactMainServer )
             tt.daemon = True
@@ -167,7 +209,7 @@ class TcpServer( object ):
                 self.currentSize = currentSize
                 self.cliqueSize = cliqueSize
                 self.sendPacket( backupSock, [ requestMessage ] )
-                data = self.recvPacket( backupSock, self.currentSize * currentSize + 10 )
+                data = self.recvPacket( backupSock, self.currentSize * self.currentSize + 10 )
                 self.currentGraph = data[ 0 ]
 
             self.sendPacket( backupSock, [ syncCompleteMessage ] )
@@ -213,13 +255,16 @@ class TcpServer( object ):
         self.doLogging( 'new connection establish', clientID )
         # send my currentSize and graph to the clinet to start the computation
         self.lock.acquire()
-        data = self.recvPacket( client, 20 )
+        data = self.recvPacket( client, 50 )
         if data[ 0 ] == clientClaimMessage:
             print 'it is a client'
             self.handleClientToServer( client, address, clientID )
         else:
             print 'it is a server'
-            self.handleServerToServer( client, address, clientID, data[ 1 ] )
+            try:
+                self.handleServerToServer( client, address, clientID, data[ 1 ] )
+            except:
+                print 'server to server failed\n'
 
     # ********************************************************
     # *********************************************
@@ -422,7 +467,7 @@ class TcpServer( object ):
         global errorMessage
         global tranmissionCompleteMessage
         graph = ' '
-        recvSize = self.currentSize * self.currentSize + 10
+        recvSize = self.currentSize * self.currentSize + 50
 
         # request the matrix from the client
         self.doLogging( 'request graph from client', clientID )
@@ -441,9 +486,12 @@ class TcpServer( object ):
 
         # case A_0.1, increment the problem size, include tranmission complete message
         if clientCliqueSize == 0:
+            self.recordAnswer()
+            print self.currentSize
+            print self.currentGraph
             self.currentSize += 1
             self.currentGraph = self.defaultGraph()
-            self.cliqueSize = 111111111
+            self.cliqueSize = sys.maxsize
             self.doLogging( 'answer found, update problem size', clientID )
             self.cleanLogFile()
             self.handleDifferentProblemSize( client, clientID )
@@ -451,6 +499,11 @@ class TcpServer( object ):
         else:
             self.doLogging( 'exchange complete', clientID )
             self.sendPacket( client, [ tranmissionCompleteMessage ] )
+
+    def recordAnswer( self ):
+        with open("answer", "a+") as myfile:
+                myfile.write( str( self.currentSize ) + '\n' )
+                myfile.write( self.currentGraph + '\n\n\n' )
 
     def denyNewGraph( self, client, tie, clientID ):
         # deny the matrix, not need to send if it is worse than current one
@@ -502,12 +555,20 @@ class TcpServer( object ):
 
     # take care of receiving and split the data inside packet
     def recvPacket( self, client, size ):
-        data = client.recv( size )
+        if size > 1448:
+            data = ''
+            temp = client.recv( size )
+            while not temp.endswith( '\n' ):
+                data += temp
+                temp = client.recv( size )
+            data += temp
+        else:
+            data = client.recv( size )
         return data.split( '\n' )
 
     def cleanLogFile( self ):
         # log file can hold logs for at most 10 problems
-        if self.currentSize % 10 == 0:
+        if self.currentSize % 2 == 0:
             open( self.logDir, 'w' ).close()
 
     def doLogging( self, message, clientID, level = 'info', isServer = False ):
@@ -543,7 +604,7 @@ if __name__ == "__main__":
     destIP = '0.0.0.0'
     destPort = 7788
     backup = False
-    currentSize = 5
+    currentSize = -1
 
     for o, a in opts:
         if o in ( "-h", "--help" ):

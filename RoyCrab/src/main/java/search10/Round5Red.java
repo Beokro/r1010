@@ -9,18 +9,18 @@ import java.util.Set;
 
 public class Round5Red extends Thread {
     
-    public static ConcurrentMap<Integer, List<Edge>> input;
-    public static ConcurrentMap<Integer, Integer> result;
+    public static ConcurrentMap<Integer, BlockingQueue<Edge>> input;
+    public static ConcurrentMap<Integer, Long> result;
     private static Object lock;
 
     Round5Red() {
         input = Round5Map.result;
-        result = new ConcurrentHashMap<>();
+        result = new ConcurrentHashMap<Integer, Long>();
         lock = new Object();
     }
     public void run() {
         while(!input.isEmpty()) {
-            Map.Entry<Integer, List<Edge>> entry = null;
+            Map.Entry<Integer, BlockingQueue<Edge>> entry = null;
             synchronized(lock) {
                 if(input.isEmpty()) {
                     break;
@@ -32,13 +32,7 @@ public class Round5Red extends Thread {
             for(Edge edge : entry.getValue()) {
                 g.addEdge(Integer.toString(edge.node1), Integer.toString(edge.node2));
             }
-            long cliquesL = g.countCliquesOfSize(9);
-            int cliques;
-            if(cliquesL > Integer.MAX_VALUE) {
-                cliques = Integer.MAX_VALUE;
-            } else {
-                cliques = (int)cliquesL;
-            }
+            long cliques = g.countCliquesOfSize(9);
             result.put(entry.getKey(), cliques);
         }
     }

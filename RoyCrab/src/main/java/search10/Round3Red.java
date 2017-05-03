@@ -14,7 +14,7 @@ public class Round3Red extends Thread {
 
     Round3Red() {
         input = Round3Map.result;
-        result = new ConcurrentHashMap<>();
+        result = new ConcurrentHashMap<NodeDeg, List<NodeDeg>>();
         lock = new Object();
     }
     public void run() {

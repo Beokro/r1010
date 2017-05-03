@@ -37,7 +37,7 @@ public class TcpClient {
     private String destHost;
     private int destPort;
     private int currentSize = 0;
-    private int cliqueSize = Integer.MAX_VALUE;
+    private long cliqueSize = Long.MAX_VALUE;
     private String currentGraph = " ";
     private String backupAddr = " ";
     private int backupPort = -1;
@@ -54,7 +54,7 @@ public class TcpClient {
         return currentSize;
     }
 
-    public int getCliqueSize() {
+    public long getCliqueSize() {
         return cliqueSize;
     }
 
@@ -88,18 +88,18 @@ public class TcpClient {
         backupAddr = read();
         backupPort = Integer.parseInt( read() );
         currentSize = Integer.parseInt( read() );
-        cliqueSize = Integer.parseInt( read() );
+        cliqueSize = Long.parseLong( read() );
         currentGraph = read();
         System.out.println( "Client start to work on problem with size " +
                             Integer.toString( currentSize ) + " and clique size " +
-                            Integer.toString( cliqueSize ) );
+                            Long.toString( cliqueSize ) );
 
     }
 
     // call by algorithm, start the exchange with server
     // if graph from update is invalid, graph will be empty
     // the reuslt graph return by getter will be all -1
-    public void updateFromAlg( int problemSize, int cliqueSize, int[][] graph ) {
+    public void updateFromAlg( int problemSize, long cliqueSize, int[][] graph ) {
         this.currentSize = problemSize;
         this.cliqueSize = cliqueSize;
         this.currentGraph = translateGraphToString( graph );
@@ -141,7 +141,7 @@ public class TcpClient {
 
         for ( int i = 0; i < currentSize; i++ ) {
             for ( int j = 0; j < currentSize; j++ ) {
-                message[ i ][ j ] = graph.charAt( counter );
+                message[ i ][ j ] = graph.charAt( counter ) - 48;
                 counter++;
             }
         }
@@ -164,7 +164,7 @@ public class TcpClient {
         backupAddr = read();
         backupPort = Integer.parseInt( read() );
         write( new String[] { Integer.toString( currentSize ),
-                              Integer.toString( cliqueSize )} );
+                              Long.toString( cliqueSize )} );
         message = read();
         if ( message.equals( requestMessage ) ) {
             // case A_0 and case A_1
@@ -204,7 +204,7 @@ public class TcpClient {
     public void handleProblemSizeChanged() {
         String message = "";
         this.currentSize = Integer.parseInt( read() );
-        this.cliqueSize = Integer.parseInt( read() );
+        this.cliqueSize = Long.parseLong( read() );
         this.currentGraph = read();
         System.out.println( "problem size not matched with server, now = " + this.currentSize );
         message = read();
@@ -225,7 +225,7 @@ public class TcpClient {
         if ( message.equals( tieMessage ) ) {
             System.out.println( "server and client haave same clique" );
         } else {
-            this.cliqueSize = Integer.parseInt( message );
+            this.cliqueSize = Long.parseLong( message );
             this.currentGraph = read();
             System.out.println( "server has better clique " + message );
         }
@@ -283,7 +283,7 @@ public class TcpClient {
 
 
     public static void main( String[] args ) {
-        TcpClient client = new TcpClient( "localhost", 7788 );
+        TcpClient client = new TcpClient( "192.168.0.14", 7788 );
         Random rand = new Random();
         int reduce = 0;
         int currentClique = 500;
