@@ -14,7 +14,8 @@ import java.rmi.RemoteException;
 import java.rmi.registry.Registry;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.NotBoundException;
-import com.google.common.hash;
+import java.net.MalformedURLException;
+import com.google.common.hash.*;
 
 
 class NodeDeg {
@@ -109,6 +110,9 @@ public class Alg {
     private int change = -1;
     RemoteBloomFilter sharedHis;
     BloomFilter<int[][]> tempHist;
+    List<Integer> tabuList = new LinkedList<Integer>();
+    Set<Integer> tabuSet = new HashSet<Integer>();
+    int TABU_CAP;
 
     Alg(String destHost, int destPort) throws 
                         RemoteException, NotBoundException, MalformedURLException {
@@ -126,9 +130,18 @@ public class Alg {
         }
     }
 
-    // assume remoteCurrentSize < currentSize
-    private void updateHistory() throws RemoteException {
-
+    private void clearTabu() {
+        tabuList = new LinkedList<Integer>();
+        tabuSet = new HashSet<Integer>();
+    }
+    private void updateTabu(int change) {
+        tabuList.add(change);
+        tabuSet.add(change);
+        if(tabuList.size() > TABU_CAP) {
+            int old = tabuList.get(0);
+            tabuList.remove(0);
+            tabuSet.remove(old);
+        }
     }
 
     private void addHistory(int change) throws RemoteException {
@@ -142,8 +155,9 @@ public class Alg {
                 }
             }
         };
-        tempHis = create(graphFunnel, currentSize * (currentSize + 1) / 2, 0.00001);
-        tempHis.put(graph2d);
+        tempHist = BloomFilter.create(graphFunnel, 40000000L, 0.00001);
+        tempHist.put(graph2d);
+        sharedHis.addHistory(tempHist);
     }
 
     private void accept() {
@@ -155,24 +169,22 @@ public class Alg {
         graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
         graph.set(change, temp);
     }
-    
-    private void updateFilter(int change) {
-        Edge temp = graph.get(change);
-        if(temp.node1 >= currentSize) {
-            temp = flip(temp);
-        }
-        graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
-        filter.put(graph2d);
-        graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
-    }
 
-    private boolean shouldVisit(int change) {
+    private boolean hasVisited(int change) {
+        if(tabuSet.contains(change)) {
+            return true;
+        }
+        boolean result = false;
         Edge temp = graph.get(change);
         if(temp.node1 >= currentSize) {
             temp = flip(temp);
         }
         graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
-        boolean result = history.mightContain(graph2d);
+        try {
+            result = sharedHis.inHistory(graph2d);
+        } catch(RemoteException e) {
+            e.printStackTrace();
+        }
         graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
         return result;
     }
@@ -182,12 +194,16 @@ public class Alg {
         long min = Long.MAX_VALUE;
         for(int i = 0; i < graph.size(); i++) {
             change = i;
-            if(!shouldVisit(change)) {
+            if(hasVisited(change)) {
                 continue;
             }
             Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
             long current = countCliques();
-            updateFilter(change);
+            try {
+                addHistory(change);
+            } catch(RemoteException e) {
+                e.printStackTrace();
+            }
             Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
             if(current < min) {
                 min = current;
@@ -203,13 +219,17 @@ public class Alg {
     private long getRandomNeighbor() {
         Random rand = new Random(System.currentTimeMillis());             
         int change = rand.nextInt(graph.size());
-        while(!shouldVisit(change)) {
+        while(hasVisited(change)) {
             change = rand.nextInt(currentSize);
         }
         this.change = change;
         Round1Map.graph.put(change, flip(Round1Map.graph.get(change)));
         long result = countCliques();
-        updateFilter(change);
+        try {
+            addHistory(change);
+        } catch(RemoteException e) {
+            e.printStackTrace();
+        }
         Round1Map.graph.put(change, flip(Round1Map.graph.get(change)));
         return result;
     }
@@ -308,6 +328,7 @@ public class Alg {
         long current = Long.MAX_VALUE;                                      
         Random rand = new Random(System.currentTimeMillis());
         currentSize = client.getCurrentSize();
+        TABU_CAP = currentSize * 2;
 
         while(cliques != 0) {
             if(counter >= 200) {
@@ -347,17 +368,31 @@ public class Alg {
                 cliques = current;
                 accept();
             }  
-            updateFilter();
-        } 
+            updateTabu(this.change);
+        }
         counter += 1;
         client.updateFromAlg(currentSize, cliques, graph2d);
     }
 
     public static void main( String[] args ) {
         
-        Alg excalibur = new Alg("98.185.210.172", 7788);
+        Alg excalibur = null;
+        try {
+            excalibur = new Alg("98.185.210.172", 7788);
+        } catch(Exception e) {
+            e.printStackTrace();
+            return;
+        }
         while(true) {
             excalibur.start();
+            if(excalibur.currentSize < client.getCurrentSize()) {
+                try {
+                    excalibur.sharedHis.refresh();
+                } catch(RemoteException e) {
+                    e.printStackTrace();
+                }
+                excalibur.clearTabu();
+            }
         }
     }
 }

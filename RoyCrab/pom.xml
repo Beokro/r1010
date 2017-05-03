@@ -7,6 +7,9 @@
   <version>1.0-SNAPSHOT</version>
   <name>RoyCrab</name>
   <url>http://maven.apache.org</url>
+  <properties>
+      <skipTests>true</skipTests>
+  </properties>
   <dependencies>
       <dependency>
           <groupId>com.google.guava</groupId>
@@ -20,7 +23,7 @@
               <groupId>org.apache.maven.plugins</groupId>
               <artifactId>maven-jar-plugin</artifactId>
               <configuration>
-                  <skipTests>true</skipTests>
+                    <skipTests>${skipTests}</skipTests>
                   <archive>
                       <manifest>
                           <addClasspath>true</addClasspath>
