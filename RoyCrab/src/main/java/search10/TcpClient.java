@@ -48,6 +48,7 @@ public class TcpClient {
     public TcpClient( String destHost, int destPort ) {
         this.destHost = destHost;
         this.destPort = destPort;
+        this.run();
     }
 
     public int getCurrentSize() {

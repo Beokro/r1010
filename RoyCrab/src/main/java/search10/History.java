@@ -31,8 +31,8 @@ public class History {
         return currentSize;
     }
 
-    public void addHistory(BloomFilter<int[][]> toAdd) {
-        bloomFilter.putAll(toAdd);
+    public void addHistory(int[][] toAdd) {
+        bloomFilter.put(toAdd);
         elements += 1;
         if(elements > CAP) {
             bloomFilter = BloomFilter.create(graphFunnel, CAP, fpp);

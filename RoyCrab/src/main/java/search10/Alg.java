@@ -99,22 +99,21 @@ class NodeDegPair {
 }
 
 public class Alg {
-    public static TcpClient client;
-    public static List<Edge> graph = new ArrayList<Edge>();
+    public static TcpClient client = new TcpClient("98.185.210.172", 7788);
+    public List<Edge> graph = new ArrayList<Edge>();
     public int[][] graph2d;
     private int currentSize;
     private int change = -1;
     History history;
-    BloomFilter<int[][]> tempHist;
     List<Integer> tabuList = new LinkedList<Integer>();
     Set<Integer> tabuSet = new HashSet<Integer>();
     int TABU_CAP;
 
     Alg() {
-        client = new TcpClient("98.185.210.172", 7788);
-        client.run();
         history = new History();
-
+        graph = new ArrayList<Edge>();
+        tabuList = new LinkedList<Integer>();
+        tabuSet = new HashSet<Integer>();
     }
 
     Edge flip(Edge input) {
@@ -140,19 +139,13 @@ public class Alg {
     }
 
     private void addHistory(int change) {
-        Funnel<int[][]> graphFunnel = new Funnel<int[][]>() {
-            @Override
-            public void funnel(int[][] graph2d, PrimitiveSink into) {
-                for(int i = 0; i < currentSize; i++) {
-                    for(int j = i + 1; j < currentSize; j++) {
-                        into.putInt(graph2d[i][j]);
-                    }
-                }
-            }
-        };
-        tempHist = BloomFilter.create(graphFunnel, 40000000L, 0.00001);
-        tempHist.put(graph2d);
-        history.addHistory(tempHist);
+        Edge temp = graph.get(change);
+        if(temp.node1 >= currentSize) {
+            temp = flip(temp);
+        }
+        graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
+        history.addHistory(graph2d);
+        graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
     }
 
     private void accept() {
@@ -188,9 +181,9 @@ public class Alg {
             if(hasVisited(change)) {
                 continue;
             }
+            addHistory(change);
             Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
             long current = countCliques();
-            addHistory(change);
             Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
             if(current < min) {
                 min = current;
@@ -210,9 +203,9 @@ public class Alg {
             change = rand.nextInt(currentSize);
         }
         this.change = change;
+        addHistory(change);
         Round1Map.graph.put(change, flip(Round1Map.graph.get(change)));
         long result = countCliques();
-        addHistory(change);
         Round1Map.graph.put(change, flip(Round1Map.graph.get(change)));
         return result;
     }
@@ -245,7 +238,7 @@ public class Alg {
     private void runRound(int round, int cores) {
         List<Thread> mappers = new ArrayList<Thread>();
         List<Thread> reducers = new ArrayList<Thread>();
-        int workers = cores;
+        int workers = 2*cores;
         for(int i = 0; i < workers; i++) {
             MapRed thisRound = RoundFactory.makeRound(round);
             mappers.add(0, thisRound.map);
@@ -302,19 +295,19 @@ public class Alg {
 
     public void start() {
 
-        int t0 = 5, t1 = 100000;
-        long timestamp = System.currentTimeMillis();
-        long interval = 600000L;
+        int t0 = 10, t1 = 1000;
+        long interval = 120000L;
         graph2d = client.getGraph();
         graph = new ArrayList<Edge>();
         createGraph();
         long cliques = countCliques();
         long current = Long.MAX_VALUE;                                      
-        Random rand = new Random(System.currentTimeMillis());
         currentSize = client.getCurrentSize();
         history.currentSize = currentSize;
         TABU_CAP = currentSize * 2;
-
+        long timestamp = System.currentTimeMillis();
+        Random rand = new Random(timestamp);
+        
         while(cliques != 0) {
             if(System.currentTimeMillis() - timestamp >= interval) {
                 client.updateFromAlg(currentSize, cliques, graph2d);
@@ -341,7 +334,7 @@ public class Alg {
                 } else {                                                          
                     double prob =                                                 
                         Math.pow(Math.E, ((double)(cliques - current))/((double)t1));
-                    if(prob - rand.nextDouble() >= 0.0000001) { 
+                    if(prob >= rand.nextDouble() + 0.0000001) { 
                         accept();
                         cliques = current;
                     }                                                             
@@ -361,18 +354,9 @@ public class Alg {
     public static void main( String[] args ) {
 
         Alg excalibur = null;
-        try {
-            excalibur = new Alg();
-        } catch(Exception e) {
-            e.printStackTrace();
-            return;
-        }
         while(true) {
+            excalibur = new Alg();
             excalibur.start();
-            if(excalibur.currentSize < client.getCurrentSize()) {
-                excalibur.history.refresh(client.getCurrentSize());
-                excalibur.clearTabu();
-            }
         }
     }
 }

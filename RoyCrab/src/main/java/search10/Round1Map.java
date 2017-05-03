@@ -10,13 +10,14 @@ import java.util.concurrent.LinkedBlockingQueue;
 public class Round1Map extends Thread {
     
     public static ConcurrentMap<Integer, Edge> graph;
-    public static ConcurrentMap<Integer, Edge> save = new ConcurrentHashMap<Integer, Edge>();
+    public static ConcurrentMap<Integer, Edge> save;
     public static ConcurrentMap<Integer, BlockingQueue<Integer>> result;
     private static Object lock;
 
     Round1Map() {
         result = new ConcurrentHashMap<Integer, BlockingQueue<Integer>>();
         lock = new Object();
+        save = new ConcurrentHashMap<Integer, Edge>();
     }
 
     public void run() {
