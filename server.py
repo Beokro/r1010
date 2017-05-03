@@ -42,6 +42,8 @@ class TcpServer( object ):
         self.myPort = -1
         self.firstCandidate = False
         self.lock = threading.Lock()
+        self.lastResult = -1
+        self.lastGraph = ' '
         self.currentSize = currentSize
         self.currentGraph = self.generateGraph()
         self.cliqueSize = sys.maxsize
@@ -60,21 +62,34 @@ class TcpServer( object ):
 
         content = [ x.strip() for x in content ]
         listSize = len( content )
-        lastResult = int( content[ listSize - 4 ] )
+        self.lastResult = int( content[ listSize - 4 ] )
+        self.lastGraph = content[ listSize - 3 ]
 
         if self.currentSize != -1:
             target = self.currentSize
         else:
-            self.currentSize = target = lastResult + 1
+            self.currentSize = target = self.lastResult + 1
 
         possibleIndex = ( target - 25 - 1 ) * 4
-        if target < 25 or target - 1 > lastResult or int( content[ possibleIndex ] ) != target - 1:
+        if target < 25 or target - 1 > self.lastResult or possibleIndex >= len( content ) or\
+           int( content[ possibleIndex ] ) != target - 1:
             print 'random generate targe = ' + str( target )
             return self.defaultGraph( True )
         else:
             self.currentGraph = content[ possibleIndex + 1 ]
             print 'use answer, generate graph for ' + str( self.currentSize )
             return self.defaultGraph()
+
+    def updateLastResult( self, client, startUp = False ):
+        if startUp:
+            self.sendPacket( client, [ str( self.currentSize ),
+                                       str( self.cliqueSize ),
+                                       str( self.currentGraph ),
+                                       str( self.lastResult ),
+                                       str( self.lastGraph ) ] )
+        else:
+            self.sendPacket( client, [ str( self.lastResult ),
+                                       str( self.lastGraph ) ] )
 
     def defaultGraph( self, rand = False ):
         if rand:
@@ -155,15 +170,18 @@ class TcpServer( object ):
             Server -> current size
             Server -> clique size
             Server -> current graph
+            Server -> lastResult
+            Server -> lastGraph
             Backup -> sync complete
         '''
         self.sendPacket( backupSock, [ syncRequestMessage ] )
-        data = self.recvPacket( backupSock, 40 + 850 * 850 )
+        data = self.recvPacket( backupSock, 60 + 850 * 850 * 2 )
         self.lock.acquire()
 
         self.currentSize = int( data[ 0 ] )
         self.cliqueSize = int( data[ 1 ] )
         self.graph = data[ 2 ]
+        self.recordAnswer( data[ 3 ], data[ 4 ] )
 
         self.lock.release()
         self.sendPacket( backupSock, [ syncCompleteMessage ] )
@@ -283,6 +301,8 @@ class TcpServer( object ):
             Server -> current size
             Server -> clique size
             Server -> current graph
+            Server -> lastResult
+            Server -> lastGraph
             Backup -> sync complete
         '''
         firstCandidateResponse = normalBackup
@@ -301,10 +321,9 @@ class TcpServer( object ):
             return
 
         self.lock.acquire()
-        self.sendPacket( client, [ str( self.currentSize ),
-                                   str( self.cliqueSize ),
-                                   str( self.currentGraph ) ] )
+        self.updateLastResult( client, startUp = True )
         self.lock.release()
+
         data = self.recvPacket( client, 20 )[ 0 ]
         if data != syncCompleteMessage:
             self.handleUnexpectMessage( client, syncCompleteMessage, data, clientID, True )
@@ -491,10 +510,18 @@ class TcpServer( object ):
             self.doLogging( 'exchange complete', clientID )
             self.sendPacket( client, [ tranmissionCompleteMessage ] )
 
-    def recordAnswer( self ):
+    def recordAnswer( self, size = ' ', graph = ' '):
+        print 'record size = ' + size
+        if size == ' ':
+            size = str( self.currentSize )
+        if graph == ' ':
+            graph = self.currentGraph
+        self.lastResult = size
+        self.lastGraph = graph
+
         with open("answer", "a+") as myfile:
-                myfile.write( str( self.currentSize ) + '\n' )
-                myfile.write( self.currentGraph + '\n\n\n' )
+                myfile.write( size + '\n' )
+                myfile.write( graph + '\n\n\n' )
 
     def denyNewGraph( self, client, tie, clientID ):
         # deny the matrix, not need to send if it is worse than current one
@@ -541,7 +568,7 @@ class TcpServer( object ):
     def sendPacket( self, client, datas ):
         message = ''
         for data in datas:
-            message += data + '\n'
+            message += str( data ) + '\n'
         client.send( message )
 
     # take care of receiving and split the data inside packet
