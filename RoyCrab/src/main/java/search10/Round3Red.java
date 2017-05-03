@@ -10,12 +10,11 @@ public class Round3Red extends Thread {
     
     public static ConcurrentMap<NodeDeg, List<NodeDeg>> input;
     public static ConcurrentMap<NodeDeg, List<NodeDeg>> result;
-    private static Object lock;
+    private static Object lock = new Object();
 
     Round3Red() {
         input = Round3Map.result;
         result = new ConcurrentHashMap<NodeDeg, List<NodeDeg>>();
-        lock = new Object();
     }
     public void run() {
         while(!input.isEmpty()) {

@@ -14,12 +14,11 @@ public class Round5Map extends Thread {
     
     public static ConcurrentMap<Edge, ConcurrentMap<Integer, Integer>> input;
     public static ConcurrentMap<Integer, BlockingQueue<Edge>> result;
-    private static Object lock;
+    private static Object lock = new Object();
 
     Round5Map() {
         input = Round4Red.result;
         result = new ConcurrentHashMap<Integer, BlockingQueue<Edge>>();
-        lock = new Object();
     }
     public void run() {
         while(!input.isEmpty()) {

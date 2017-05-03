@@ -12,13 +12,12 @@ public class Round2Red extends Thread {
     public static ConcurrentMap<Integer, BlockingQueue<NodeDeg>> input;
     public static BlockingQueue<NodeDegPair> result;
     public static BlockingQueue<NodeDegPair> save;
-    private static Object lock;
+    private static Object lock = new Object();
 
     Round2Red() {
         input = Round2Map.result;
         result = new LinkedBlockingQueue<NodeDegPair>();
         save = new LinkedBlockingQueue<NodeDegPair>();
-        lock = new Object();
     }
 
     public void run() {

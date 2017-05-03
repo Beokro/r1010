@@ -14,13 +14,12 @@ public class Round4Map extends Thread {
     public static ConcurrentMap<NodeDeg, List<NodeDeg>> withNeighbors;
     public static BlockingQueue<NodeDegPair> edges;
     public static ConcurrentMap<Edge, ConcurrentMap<Integer, Integer>> result;
-    private static Object lock;
+    private static Object lock = new Object();
 
     Round4Map() {
         withNeighbors = Round3Red.result;
         edges = Round2Red.save;
         result = new ConcurrentHashMap<Edge, ConcurrentMap<Integer, Integer>>();
-        lock = new Object();
     }
     public void run() {
         while(!edges.isEmpty()) {

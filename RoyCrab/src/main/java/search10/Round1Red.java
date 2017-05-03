@@ -10,7 +10,7 @@ public class Round1Red extends Thread {
     
     public static ConcurrentMap<Integer, BlockingQueue<Integer>> input;
     public static BlockingQueue<OneNeighbor> result;
-    public static Object lock;
+    public static Object lock = new Object();
 
     Round1Red() {
         lock = new Object();

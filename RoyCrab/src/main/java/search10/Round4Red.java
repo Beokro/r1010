@@ -11,12 +11,11 @@ public class Round4Red extends Thread {
     
     public static ConcurrentMap<Edge, ConcurrentMap<Integer, Integer>> input;
     public static ConcurrentMap<Edge, ConcurrentMap<Integer, Integer>> result;
-    private static Object lock;
+    private static Object lock = new Object();
 
     Round4Red() {
         input = Round4Map.result;
         result = new ConcurrentHashMap<Edge, ConcurrentMap<Integer, Integer>>();
-        lock = new Object();
     }
     public void run() {
         while(!input.isEmpty()) {

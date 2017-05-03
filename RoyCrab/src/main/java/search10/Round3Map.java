@@ -12,7 +12,7 @@ public class Round3Map extends Thread {
     
     public static BlockingQueue<NodeDegPair> input;
     public static ConcurrentMap<NodeDeg, List<NodeDeg>> result;
-    private Object lock = new Object();
+    private static Object lock = new Object();
 
     Round3Map() {
         input = Round2Red.result;
