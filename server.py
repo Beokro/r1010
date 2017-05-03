@@ -97,7 +97,7 @@ class TcpServer( object ):
             return res
 
     def listen( self ):
-        self.sock.listen( 200 )
+        self.sock.listen( 800 )
         if self.backup:
             tt = threading.Thread( target = self.contactMainServer )
             tt.daemon = True
@@ -258,7 +258,10 @@ class TcpServer( object ):
             self.handleClientToServer( client, address, clientID )
         else:
             print 'it is a server'
-            self.handleServerToServer( client, address, clientID, data[ 1 ] )
+            try:
+                self.handleServerToServer( client, address, clientID, data[ 1 ] )
+            except:
+                print 'server to server failed\n'
 
     # ********************************************************
     # *********************************************
