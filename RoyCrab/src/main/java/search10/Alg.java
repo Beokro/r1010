@@ -10,10 +10,6 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.Random;
-import java.rmi.RemoteException;
-import java.rmi.registry.Registry;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.NotBoundException;
 import java.net.MalformedURLException;
 import com.google.common.hash.*;
 
@@ -108,18 +104,17 @@ public class Alg {
     public int[][] graph2d;
     private int currentSize;
     private int change = -1;
-    RemoteBloomFilter sharedHis;
+    History history;
     BloomFilter<int[][]> tempHist;
     List<Integer> tabuList = new LinkedList<Integer>();
     Set<Integer> tabuSet = new HashSet<Integer>();
     int TABU_CAP;
 
-    Alg(int filterPort) throws 
-                        RemoteException, NotBoundException, MalformedURLException {
+    Alg() {
         client = new TcpClient("98.185.210.172", 7788);
         client.run();
-        Registry reg = LocateRegistry.getRegistry("98.185.210.172", filterPort);
-        sharedHis = (RemoteBloomFilter) reg.lookup("RemoteBloomFilter");
+        history = new History();
+
     }
 
     Edge flip(Edge input) {
@@ -144,7 +139,7 @@ public class Alg {
         }
     }
 
-    private void addHistory(int change) throws RemoteException {
+    private void addHistory(int change) {
         Funnel<int[][]> graphFunnel = new Funnel<int[][]>() {
             @Override
             public void funnel(int[][] graph2d, PrimitiveSink into) {
@@ -157,7 +152,7 @@ public class Alg {
         };
         tempHist = BloomFilter.create(graphFunnel, 40000000L, 0.00001);
         tempHist.put(graph2d);
-        sharedHis.addHistory(tempHist);
+        history.addHistory(tempHist);
     }
 
     private void accept() {
@@ -180,11 +175,7 @@ public class Alg {
             temp = flip(temp);
         }
         graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
-        try {
-            result = sharedHis.inHistory(graph2d);
-        } catch(RemoteException e) {
-            e.printStackTrace();
-        }
+        result = history.inHistory(graph2d);
         graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
         return result;
     }
@@ -199,11 +190,7 @@ public class Alg {
             }
             Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
             long current = countCliques();
-            try {
-                addHistory(change);
-            } catch(RemoteException e) {
-                e.printStackTrace();
-            }
+            addHistory(change);
             Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
             if(current < min) {
                 min = current;
@@ -225,11 +212,7 @@ public class Alg {
         this.change = change;
         Round1Map.graph.put(change, flip(Round1Map.graph.get(change)));
         long result = countCliques();
-        try {
-            addHistory(change);
-        } catch(RemoteException e) {
-            e.printStackTrace();
-        }
+        addHistory(change);
         Round1Map.graph.put(change, flip(Round1Map.graph.get(change)));
         return result;
     }
@@ -329,6 +312,7 @@ public class Alg {
         long current = Long.MAX_VALUE;                                      
         Random rand = new Random(System.currentTimeMillis());
         currentSize = client.getCurrentSize();
+        history.currentSize = currentSize;
         TABU_CAP = currentSize * 2;
 
         while(cliques != 0) {
@@ -375,14 +359,10 @@ public class Alg {
     }
 
     public static void main( String[] args ) {
-        
-        //if(args.length < 1) {
-        //    System.out.println("Usage: java -jar <executable> <filter port number>");
-        //}
+
         Alg excalibur = null;
         try {
-            //excalibur = new Alg(Integer.parseInt(args[0]));
-            excalibur = new Alg(7770);
+            excalibur = new Alg();
         } catch(Exception e) {
             e.printStackTrace();
             return;
@@ -390,11 +370,7 @@ public class Alg {
         while(true) {
             excalibur.start();
             if(excalibur.currentSize < client.getCurrentSize()) {
-                try {
-                    excalibur.sharedHis.refresh();
-                } catch(RemoteException e) {
-                    e.printStackTrace();
-                }
+                excalibur.history.refresh(client.getCurrentSize());
                 excalibur.clearTabu();
             }
         }
