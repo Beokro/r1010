@@ -68,8 +68,12 @@ class TcpServer( object ):
 
         if self.currentSize != -1:
             target = self.currentSize
+            self.lastResult = self.currentSize - 1
+            self.lastGraph = '0' * self.lastResult * self.lastResult
         else:
             self.currentSize = target = self.lastResult + 1
+            self.lastResult = int( content[ listSize - 4 ] )
+            self.lastGraph = content[ listSize - 3 ]
 
         possibleIndex = ( target - 25 - 1 ) * 4
         if target < 25 or target - 1 > self.lastResult or possibleIndex >= len( content ) or\
@@ -92,7 +96,7 @@ class TcpServer( object ):
             self.sendPacket( client, [ str( self.lastResult ),
                                        str( self.lastGraph ) ] )
 
-    def defaultGraph( self, rand = False ):
+    def defaultGraph( self, rand = False, useLastGraphAsBase = False ):
         if rand:
             num = self.currentSize * self.currentSize
             index = 0
@@ -104,7 +108,10 @@ class TcpServer( object ):
         else:
             res = ''
             index = 0
-            glists = textwrap.wrap( self.currentGraph ,  self.currentSize - 1 )
+            if useLastGraphAsBase:
+                glists = textwrap.wrap( self.lastGraph ,  self.currentSize - 1 )
+            else:
+                glists = textwrap.wrap( self.currentGraph ,  self.currentSize - 1 )
             for g in glists:
                 res += g + str( randint( 0, 1 ) )
             while index < self.currentSize:
@@ -571,11 +578,12 @@ class TcpServer( object ):
     # handle case B
     def handleDifferentProblemSize( self, client, clientID ):
         global problemSizeChangedMessage
-        self.doLogging( 'problem sized not matched, start to sync', clientID, 'warning' )
+        self.doLogging( 'problem sized not matched, give it a random graph to start with',
+                        clientID, 'warning' )
         datas = [ problemSizeChangedMessage,
                   str( self.currentSize ),
                   str( self.cliqueSize ),
-                  self.currentGraph,
+                  self.defaultGraph( useLastGraphAsBase = True ),
                   tranmissionCompleteMessage ]
         self.sendPacket( client, datas )
         return
