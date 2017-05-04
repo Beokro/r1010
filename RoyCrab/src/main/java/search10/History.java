@@ -32,12 +32,12 @@ public class History {
     }
 
     public void addHistory(int[][] toAdd) {
-        bloomFilter.put(toAdd);
-        elements += 1;
-        if(elements > CAP) {
+        if(elements >= CAP) {
             bloomFilter = BloomFilter.create(graphFunnel, CAP, fpp);
             elements = 0;
         }
+        bloomFilter.put(toAdd);
+        elements += 1;
     }
 
     public boolean inHistory(int[][] graph2d) {

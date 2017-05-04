@@ -104,13 +104,12 @@ public class Alg {
     public int[][] graph2d;
     private int currentSize;
     private int change = -1;
-    History history;
+    static History history = new History();;
     List<Integer> tabuList = new LinkedList<Integer>();
     Set<Integer> tabuSet = new HashSet<Integer>();
     int TABU_CAP;
 
     Alg() {
-        history = new History();
         graph = new ArrayList<Edge>();
         tabuList = new LinkedList<Integer>();
         tabuSet = new HashSet<Integer>();
@@ -172,7 +171,7 @@ public class Alg {
         graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
         return result;
     }
-
+    /*
     private long getBestNeighbor() {
         int change = -1;
         long min = Long.MAX_VALUE;
@@ -195,6 +194,7 @@ public class Alg {
         }
         return min;
     }
+    */
 
     private long getRandomNeighbor() {
         Random rand = new Random(System.currentTimeMillis());             
@@ -309,7 +309,8 @@ public class Alg {
         Random rand = new Random(timestamp);
         
         while(cliques != 0) {
-            if(System.currentTimeMillis() - timestamp >= interval) {
+            long haha = System.currentTimeMillis();
+            if(haha - timestamp >= interval) {
                 client.updateFromAlg(currentSize, cliques, graph2d);
                 if(currentSize < client.getCurrentSize() ||
                         cliques - client.getCliqueSize() > 10) {
@@ -349,6 +350,9 @@ public class Alg {
         Alg excalibur = null;
         while(true) {
             excalibur = new Alg();
+            if(history.getCurrentSize() < client.getCurrentSize()) {
+                history.refresh(client.getCurrentSize());
+            }
             excalibur.start();
         }
     }
