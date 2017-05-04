@@ -108,23 +108,12 @@ public class Alg {
     public int[][] graph2d;
     private int currentSize;
     private int change = -1;
-    static History history = new History();;
+    static RemoteBloomFilter history;
     List<Integer> tabuList = new LinkedList<Integer>();
     Set<Integer> tabuSet = new HashSet<Integer>();
     int TABU_CAP;
 
     Alg() {
-        try 
-        { 
-           Registry registry = LocateRegistry.getRegistry(RemoteBloomFilter.PORT);
-           RemoteBloomFilter stub = (RemoteBloomFilter) registry.lookup(RemoteBloomFilter.SERVICE_NAME);
-           System.out.println(stub.getCurrentSize()); 
-        } 
-        catch (Exception e) 
-        { 
-           System.out.println("HelloClient exception: " + e.getMessage()); 
-           e.printStackTrace(); 
-        } 
         graph = new ArrayList<Edge>();
         tabuList = new LinkedList<Integer>();
         tabuSet = new HashSet<Integer>();
@@ -158,7 +147,11 @@ public class Alg {
             temp = flip(temp);
         }
         graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
-        history.addHistory(graph2d);
+        try {
+            history.addHistory(graph2d);
+        } catch(RemoteException e) {
+            e.printStackTrace();
+        }
         graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
     }
 
@@ -182,35 +175,14 @@ public class Alg {
             temp = flip(temp);
         }
         graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
-        result = history.inHistory(graph2d);
+        try {
+            result = history.inHistory(graph2d);
+        } catch(RemoteException e) {
+            e.printStackTrace();
+        }
         graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
         return result;
     }
-    /*
-    private long getBestNeighbor() {
-        int change = -1;
-        long min = Long.MAX_VALUE;
-        for(int i = 0; i < graph.size(); i++) {
-            change = i;
-            if(hasVisited(change)) {
-                continue;
-            }
-            addHistory(change);
-            Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
-            long current = countCliques();
-            Round1Map.graph.put(change, flip(Round1Map.graph.get(change))); 
-            if(current < min) {
-                min = current;
-                this.change = change;
-                if(min == 0) {
-                    break;
-                }
-            }
-        }
-        return min;
-    }
-    */
-
     private long getRandomNeighbor() {
         Random rand = new Random(System.currentTimeMillis());             
         int change = rand.nextInt(graph.size());
@@ -318,7 +290,11 @@ public class Alg {
         long cliques = countCliques();
         long current = Long.MAX_VALUE;                                      
         currentSize = client.getCurrentSize();
-        history.currentSize = currentSize;
+        try {
+            history.setCurrentSize(currentSize);
+        } catch(RemoteException e) {
+            e.printStackTrace();
+        }
         TABU_CAP = currentSize * 10;
         long timestamp = System.currentTimeMillis();
         Random rand = new Random(timestamp);
@@ -363,10 +339,24 @@ public class Alg {
     public static void main( String[] args ) {
 
         Alg excalibur = null;
+        try 
+        { 
+           Registry registry = LocateRegistry.getRegistry(RemoteBloomFilter.PORT);
+           Alg.history= (RemoteBloomFilter) 
+                                   registry.lookup(RemoteBloomFilter.SERVICE_NAME);
+        } 
+        catch (Exception e) 
+        { 
+           e.printStackTrace(); 
+        } 
         while(true) {
             excalibur = new Alg();
-            if(history.getCurrentSize() < client.getCurrentSize()) {
-                history.refresh(client.getCurrentSize());
+            try {
+                if(history.getCurrentSize() < client.getCurrentSize()) {
+                    history.refresh(client.getCurrentSize());
+                }
+            } catch(RemoteException e) {
+                e.printStackTrace();
             }
             excalibur.start();
         }

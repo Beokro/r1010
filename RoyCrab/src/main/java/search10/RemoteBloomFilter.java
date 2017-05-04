@@ -14,7 +14,8 @@ public interface RemoteBloomFilter extends Remote {
     public static int PORT = 2014;
     public static String SERVICE_NAME = "RemoteBloomFilter";
     public boolean inHistory(int[][] graph2d) throws RemoteException;
-    public void addHistory(BloomFilter<int[][]> toAdd) throws RemoteException;
+    public void addHistory(int[][] toAdd) throws RemoteException;
     public int getCurrentSize() throws RemoteException;
-    public void refresh() throws RemoteException;
+    public void refresh(int currentSize) throws RemoteException;
+    public void setCurrentSize(int currentSize) throws RemoteException;
 }
