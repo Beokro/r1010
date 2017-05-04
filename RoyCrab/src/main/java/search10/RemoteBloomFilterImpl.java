@@ -157,6 +157,9 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter {
 
     @Override
     public boolean inHistory(int[][] graph2d) throws RemoteException {
+        if(backup == null) {
+            return bloomFilter.mightContain(graph2d);
+        }
         return backup.mightContain(graph2d) || bloomFilter.mightContain(graph2d);
     }
     
