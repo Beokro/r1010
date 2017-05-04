@@ -11,7 +11,7 @@ import java.rmi.*;
  * @author Seraph_Roy
  */
 public interface RemoteBloomFilter extends Remote {
-    public static int PORT = 2014;
+    public static int PORT = 7789;
     public static String SERVICE_NAME = "RemoteBloomFilter";
     public boolean inHistory(int[][] graph2d) throws RemoteException;
     public void addHistory(int[][] toAdd) throws RemoteException;

@@ -150,7 +150,14 @@ public class Alg {
         try {
             history.addHistory(graph2d);
         } catch(RemoteException e) {
-            e.printStackTrace();
+            try{
+                    Registry registry = LocateRegistry.getRegistry(
+                                       "98.185.210.172", RemoteBloomFilter.PORT);
+                    history= (RemoteBloomFilter) 
+                                   registry.lookup(RemoteBloomFilter.SERVICE_NAME);
+                } catch(Exception nima) {
+                    nima.printStackTrace();
+                }
         }
         graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
     }
@@ -178,7 +185,14 @@ public class Alg {
         try {
             result = history.inHistory(graph2d);
         } catch(RemoteException e) {
-            e.printStackTrace();
+            try{
+                    Registry registry = LocateRegistry.getRegistry(
+                                       "98.185.210.172", RemoteBloomFilter.PORT);
+                    history= (RemoteBloomFilter) 
+                                   registry.lookup(RemoteBloomFilter.SERVICE_NAME);
+                } catch(Exception nima) {
+                    nima.printStackTrace();
+                }
         }
         graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
         return result;
@@ -283,7 +297,6 @@ public class Alg {
     public void start() {
 
         int t0 = 10, t1 = 1000;
-        long interval = 120000L;
         graph2d = client.getGraph();
         graph = new ArrayList<Edge>();
         createGraph();
@@ -291,18 +304,20 @@ public class Alg {
         long current = Long.MAX_VALUE;                                      
         currentSize = client.getCurrentSize();
         TABU_CAP = currentSize * 10;
-        long timestamp = System.currentTimeMillis();
-        Random rand = new Random(timestamp);
+        int interval = currentSize / 20;
+        int step = (t1 - t0) / interval;
+        int count = 0;
+        Random rand = new Random(System.currentTimeMillis());
         
         while(cliques != 0) {
             long haha = System.currentTimeMillis();
-            if(haha - timestamp >= interval) {
+            if(count >= interval) {
                 client.updateFromAlg(currentSize, cliques, graph2d);
                 if(currentSize < client.getCurrentSize() ||
                         cliques - client.getCliqueSize() > 10) {
                     return;
                 } else {
-                    timestamp = System.currentTimeMillis();
+                    count = 0;
                 }
             }
             current = getRandomNeighbor();
@@ -323,10 +338,10 @@ public class Alg {
                     accept();
                     cliques = current;
                 }                                                             
-                t1 -= 1;
-                t1 = Math.min(t1, t0);
+                t1 -= step;
             }
             updateTabu(this.change);
+            count += 1;
         }
         client.updateFromAlg(currentSize, cliques, graph2d);
     }
@@ -334,11 +349,13 @@ public class Alg {
     public static void main( String[] args ) {
 
         Alg excalibur = null;
+        excalibur = new Alg();
         try 
         { 
            Registry registry = LocateRegistry.getRegistry(
-                                       "98.185.210.172", RemoteBloomFilter.PORT);
-           history= (RemoteBloomFilter) 
+                                        RemoteBloomFilter.PORT);
+           
+           history= (RemoteBloomFilter)
                                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
            history.setCurrentSize(client.getCurrentSize());
         } 
@@ -354,7 +371,14 @@ public class Alg {
                     history.refresh(client.getCurrentSize());
                 }
             } catch(RemoteException e) {
-                e.printStackTrace();
+                try{
+                    Registry registry = LocateRegistry.getRegistry(
+                                       "98.185.210.172", RemoteBloomFilter.PORT);
+                    history= (RemoteBloomFilter) 
+                                   registry.lookup(RemoteBloomFilter.SERVICE_NAME);
+                } catch(Exception nima) {
+                    nima.printStackTrace();
+                }
             }
         }
     }
