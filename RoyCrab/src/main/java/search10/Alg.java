@@ -109,14 +109,13 @@ public class Alg {
     private int currentSize;
     private int change = -1;
     static RemoteBloomFilter history;
-    List<Integer> tabuList = new LinkedList<Integer>();
-    Set<Integer> tabuSet = new HashSet<Integer>();
-    int TABU_CAP;
+    static int t0;
+    static int t1;
+    static int interval;
+    static int step;
 
     Alg() {
         graph = new ArrayList<Edge>();
-        tabuList = new LinkedList<Integer>();
-        tabuSet = new HashSet<Integer>();
     }
 
     Edge flip(Edge input) {
@@ -124,20 +123,6 @@ public class Alg {
             return new Edge(input.node1 + currentSize, input.node2 + currentSize);
         } else {
             return new Edge(input.node1 - currentSize, input.node2 - currentSize);
-        }
-    }
-
-    private void clearTabu() {
-        tabuList = new LinkedList<Integer>();
-        tabuSet = new HashSet<Integer>();
-    }
-    private void updateTabu(int change) {
-        tabuList.add(change);
-        tabuSet.add(change);
-        if(tabuList.size() > TABU_CAP) {
-            int old = tabuList.get(0);
-            tabuList.remove(0);
-            tabuSet.remove(old);
         }
     }
 
@@ -173,9 +158,6 @@ public class Alg {
     }
 
     private boolean hasVisited(int change) {
-        if(tabuSet.contains(change)) {
-            return true;
-        }
         boolean result = false;
         Edge temp = graph.get(change);
         if(temp.node1 >= currentSize) {
@@ -296,21 +278,16 @@ public class Alg {
 
     public void start() {
 
-        int t0 = 10, t1 = 1000;
         graph2d = client.getGraph();
         graph = new ArrayList<Edge>();
         createGraph();
         long cliques = countCliques();
         long current = Long.MAX_VALUE;                                      
         currentSize = client.getCurrentSize();
-        TABU_CAP = currentSize * 10;
-        int interval = currentSize / 20;
-        int step = (t1 - t0) / interval;
-        int count = 0;
         Random rand = new Random(System.currentTimeMillis());
+        int count = 0;
         
         while(cliques != 0) {
-            long haha = System.currentTimeMillis();
             if(count >= interval) {
                 client.updateFromAlg(currentSize, cliques, graph2d);
                 if(currentSize < client.getCurrentSize() ||
@@ -339,17 +316,25 @@ public class Alg {
                     cliques = current;
                 }                                                             
                 t1 -= step;
+                if(t1 < t0) {
+                    t1 = t0;
+                }
             }
-            updateTabu(this.change);
             count += 1;
         }
         client.updateFromAlg(currentSize, cliques, graph2d);
     }
-
+    public static void setupParams() {
+        t0 = 5;
+        t1 = client.getCurrentSize();
+        interval = t1;
+        step = 1;
+    }
     public static void main( String[] args ) {
 
         Alg excalibur = null;
         excalibur = new Alg();
+        setupParams();
         try 
         { 
            Registry registry = LocateRegistry.getRegistry(
@@ -368,6 +353,7 @@ public class Alg {
             excalibur.start();
             try {
                 if(history.getCurrentSize() < client.getCurrentSize()) {
+                    setupParams();
                     history.refresh(client.getCurrentSize());
                 }
             } catch(RemoteException e) {
