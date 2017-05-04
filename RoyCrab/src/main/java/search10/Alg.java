@@ -290,11 +290,6 @@ public class Alg {
         long cliques = countCliques();
         long current = Long.MAX_VALUE;                                      
         currentSize = client.getCurrentSize();
-        try {
-            history.setCurrentSize(currentSize);
-        } catch(RemoteException e) {
-            e.printStackTrace();
-        }
         TABU_CAP = currentSize * 10;
         long timestamp = System.currentTimeMillis();
         Random rand = new Random(timestamp);
@@ -342,8 +337,9 @@ public class Alg {
         try 
         { 
            Registry registry = LocateRegistry.getRegistry(RemoteBloomFilter.PORT);
-           Alg.history= (RemoteBloomFilter) 
+           history= (RemoteBloomFilter) 
                                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
+           history.setCurrentSize(client.getCurrentSize());
         } 
         catch (Exception e) 
         { 

@@ -72,6 +72,7 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter {
             RemoteBloomFilterImpl filter = new RemoteBloomFilterImpl();
             RemoteBloomFilter stub = (RemoteBloomFilter) UnicastRemoteObject.exportObject(filter, 0);
             Registry registry = LocateRegistry.createRegistry(RemoteBloomFilter.PORT);
+            registry.bind(RemoteBloomFilter.SERVICE_NAME, stub);
             System.out.println("Remote bloom filter starts");
         } catch (Exception e) {
             e.printStackTrace();
