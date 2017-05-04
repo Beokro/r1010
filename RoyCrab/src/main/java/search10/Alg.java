@@ -347,6 +347,7 @@ public class Alg {
         } 
         while(true) {
             excalibur = new Alg();
+            excalibur.start();
             try {
                 if(history.getCurrentSize() < client.getCurrentSize()) {
                     history.refresh(client.getCurrentSize());
@@ -354,7 +355,6 @@ public class Alg {
             } catch(RemoteException e) {
                 e.printStackTrace();
             }
-            excalibur.start();
         }
     }
 }
