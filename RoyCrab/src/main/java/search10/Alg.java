@@ -288,10 +288,11 @@ public class Alg {
         int count = 0;
         
         while(cliques != 0) {
+            
             if(count >= interval) {
                 client.updateFromAlg(currentSize, cliques, graph2d);
                 if(currentSize < client.getCurrentSize() ||
-                        cliques - client.getCliqueSize() > 10) {
+                        cliques >= client.getCliqueSize()) {
                     return;
                 } else {
                     count = 0;
@@ -300,7 +301,7 @@ public class Alg {
             current = getRandomNeighbor();
             if(current < cliques) { 
                 accept();
-                if(current <= cliques / 10 * 9 || current < 1000) {
+                if(current <= cliques / 10 * 7 || current < 10000) {
                     client.updateFromAlg(currentSize, current, graph2d);
                     if(currentSize < client.getCurrentSize() ||
                             current > client.getCliqueSize()) {
@@ -310,7 +311,7 @@ public class Alg {
                 cliques = current;                                            
             } else {                                                          
                 double prob =                                                 
-                    Math.pow(Math.E, ((double)(cliques - current))/((double)t1));
+                 Math.pow(Math.E, ((double)(cliques - current))/((double)t1));
                 if(prob >= rand.nextDouble() + 0.0000001) { 
                     accept();
                     cliques = current;
