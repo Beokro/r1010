@@ -4,8 +4,8 @@ import com.google.common.hash.*;
 public class History {
     private BloomFilter<int[][]> bloomFilter;    
     int currentSize;
-    private long CAP = 4000000L;
-    private double fpp = 0.00000001;
+    private long CAP = 40000000L;
+    private double fpp = 0.000000001;
     private long elements = 0;
     private Funnel<int[][]> graphFunnel = new Funnel<int[][]>() {
         @Override

@@ -12,6 +12,10 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.Random;
 import java.net.MalformedURLException;
 import com.google.common.hash.*;
+import java.rmi.Naming;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 
 
 class NodeDeg {
@@ -110,6 +114,17 @@ public class Alg {
     int TABU_CAP;
 
     Alg() {
+        try 
+        { 
+           Registry registry = LocateRegistry.getRegistry(RemoteBloomFilter.PORT);
+           RemoteBloomFilter stub = (RemoteBloomFilter) registry.lookup(RemoteBloomFilter.SERVICE_NAME);
+           System.out.println(stub.getCurrentSize()); 
+        } 
+        catch (Exception e) 
+        { 
+           System.out.println("HelloClient exception: " + e.getMessage()); 
+           e.printStackTrace(); 
+        } 
         graph = new ArrayList<Edge>();
         tabuList = new LinkedList<Integer>();
         tabuSet = new HashSet<Integer>();
