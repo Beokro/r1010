@@ -25,7 +25,9 @@ syncCompleteMessage = 'syncCom'
 firstBackup = 'first'
 normalBackup = 'normal'
 lastAnswerRequest = 'lastAnsReq'
+tempFileName = 'tempFile'
 backupSyncTime = 5
+answerSaveTime = 600
 
 
 class TcpServer( object ):
@@ -58,7 +60,7 @@ class TcpServer( object ):
         self.doLogging( 'server run on address: ' + host + ' port: ' + str( port ), '-1' )
 
     def generateGraph( self ):
-        with open( 'answer' ) as f:
+        with open( 'newAnswer' ) as f:
             content = f.readlines()
 
         content = [ x.strip() for x in content ]
@@ -121,10 +123,16 @@ class TcpServer( object ):
 
     def listen( self ):
         self.sock.listen( 200 )
+
+        ttt = threading.Thread( target = self.saveTempAnswer )
+        ttt.daemon = True
+        ttt.start()
+
         if self.backup:
             tt = threading.Thread( target = self.contactMainServer )
             tt.daemon = True
             tt.start()
+
         while True:
             client, address = self.sock.accept()
             # need to be more careful about the timeout
@@ -134,6 +142,17 @@ class TcpServer( object ):
                                   args = ( client, address, str( self.counter ) ) )
             t.daemon = True
             t.start()
+
+
+    def saveTempAnswer( self ):
+        global answerSaveTime
+        global tempFileName
+        with open( tempFileName, "w+" ) as myfile:
+            self.lock.acquire()
+            myfile.write( str( self.currentSize ) + '\n' )
+            myfile.write( self.currentGraph + '\n\n\n' )
+            self.lock.release()
+        time.sleep( answerSaveTime )
 
 
     # ********************************************************
@@ -546,8 +565,11 @@ class TcpServer( object ):
         self.lastGraph = graph
 
         with open("answer", "a+") as myfile:
-                myfile.write( size + '\n' )
-                myfile.write( graph + '\n\n\n' )
+            myfile.write( size + '\n' )
+            myfile.write( graph + '\n\n\n' )
+        with open("newAnswer", "w+") as myfile:
+            myfile.write( size + '\n' )
+            myfile.write( graph + '\n\n\n' )
 
     def denyNewGraph( self, client, tie, clientID ):
         # deny the matrix, not need to send if it is worse than current one
