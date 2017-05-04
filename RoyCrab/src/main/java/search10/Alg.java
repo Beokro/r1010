@@ -109,14 +109,13 @@ public class Alg {
     private int currentSize;
     private int change = -1;
     static RemoteBloomFilter history;
-    List<Integer> tabuList = new LinkedList<Integer>();
-    Set<Integer> tabuSet = new HashSet<Integer>();
-    int TABU_CAP;
+    static int t0;
+    static int t1;
+    static int interval;
+    static int step;
 
     Alg() {
         graph = new ArrayList<Edge>();
-        tabuList = new LinkedList<Integer>();
-        tabuSet = new HashSet<Integer>();
     }
 
     Edge flip(Edge input) {
@@ -124,20 +123,6 @@ public class Alg {
             return new Edge(input.node1 + currentSize, input.node2 + currentSize);
         } else {
             return new Edge(input.node1 - currentSize, input.node2 - currentSize);
-        }
-    }
-
-    private void clearTabu() {
-        tabuList = new LinkedList<Integer>();
-        tabuSet = new HashSet<Integer>();
-    }
-    private void updateTabu(int change) {
-        tabuList.add(change);
-        tabuSet.add(change);
-        if(tabuList.size() > TABU_CAP) {
-            int old = tabuList.get(0);
-            tabuList.remove(0);
-            tabuSet.remove(old);
         }
     }
 
@@ -150,7 +135,14 @@ public class Alg {
         try {
             history.addHistory(graph2d);
         } catch(RemoteException e) {
-            e.printStackTrace();
+            try{
+                    Registry registry = LocateRegistry.getRegistry(
+                                       "98.185.210.172", RemoteBloomFilter.PORT);
+                    history= (RemoteBloomFilter) 
+                                   registry.lookup(RemoteBloomFilter.SERVICE_NAME);
+                } catch(Exception nima) {
+                    nima.printStackTrace();
+                }
         }
         graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
     }
@@ -166,9 +158,6 @@ public class Alg {
     }
 
     private boolean hasVisited(int change) {
-        if(tabuSet.contains(change)) {
-            return true;
-        }
         boolean result = false;
         Edge temp = graph.get(change);
         if(temp.node1 >= currentSize) {
@@ -178,7 +167,14 @@ public class Alg {
         try {
             result = history.inHistory(graph2d);
         } catch(RemoteException e) {
-            e.printStackTrace();
+            try{
+                    Registry registry = LocateRegistry.getRegistry(
+                                       "98.185.210.172", RemoteBloomFilter.PORT);
+                    history= (RemoteBloomFilter) 
+                                   registry.lookup(RemoteBloomFilter.SERVICE_NAME);
+                } catch(Exception nima) {
+                    nima.printStackTrace();
+                }
         }
         graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
         return result;
@@ -282,33 +278,30 @@ public class Alg {
 
     public void start() {
 
-        int t0 = 10, t1 = 1000;
-        long interval = 120000L;
         graph2d = client.getGraph();
         graph = new ArrayList<Edge>();
         createGraph();
         long cliques = countCliques();
         long current = Long.MAX_VALUE;                                      
         currentSize = client.getCurrentSize();
-        TABU_CAP = currentSize * 10;
-        long timestamp = System.currentTimeMillis();
-        Random rand = new Random(timestamp);
+        Random rand = new Random(System.currentTimeMillis());
+        int count = 0;
         
         while(cliques != 0) {
-            long haha = System.currentTimeMillis();
-            if(haha - timestamp >= interval) {
+            
+            if(count >= interval) {
                 client.updateFromAlg(currentSize, cliques, graph2d);
                 if(currentSize < client.getCurrentSize() ||
-                        cliques - client.getCliqueSize() > 10) {
+                        cliques >= client.getCliqueSize()) {
                     return;
                 } else {
-                    timestamp = System.currentTimeMillis();
+                    count = 0;
                 }
             }
             current = getRandomNeighbor();
             if(current < cliques) { 
                 accept();
-                if(current <= cliques / 10 * 9 || current < 1000) {
+                if(current <= cliques / 10 * 7 && cliques > 10000) {
                     client.updateFromAlg(currentSize, current, graph2d);
                     if(currentSize < client.getCurrentSize() ||
                             current > client.getCliqueSize()) {
@@ -318,27 +311,37 @@ public class Alg {
                 cliques = current;                                            
             } else {                                                          
                 double prob =                                                 
-                    Math.pow(Math.E, ((double)(cliques - current))/((double)t1));
+                 Math.pow(Math.E, ((double)(cliques - current))/((double)t1));
                 if(prob >= rand.nextDouble() + 0.0000001) { 
                     accept();
                     cliques = current;
                 }                                                             
-                t1 -= 1;
-                t1 = Math.min(t1, t0);
+                t1 -= step;
+                if(t1 < t0) {
+                    t1 = t0;
+                }
             }
-            updateTabu(this.change);
+            count += 1;
         }
         client.updateFromAlg(currentSize, cliques, graph2d);
     }
-
+    public static void setupParams() {
+        t0 = 5;
+        t1 = client.getCurrentSize();
+        interval = t1;
+        step = 1;
+    }
     public static void main( String[] args ) {
 
         Alg excalibur = null;
+        excalibur = new Alg();
+        setupParams();
         try 
         { 
            Registry registry = LocateRegistry.getRegistry(
-                                       "98.185.210.172", RemoteBloomFilter.PORT);
-           history= (RemoteBloomFilter) 
+                                        RemoteBloomFilter.PORT);
+           
+           history= (RemoteBloomFilter)
                                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
            history.setCurrentSize(client.getCurrentSize());
         } 
@@ -351,10 +354,18 @@ public class Alg {
             excalibur.start();
             try {
                 if(history.getCurrentSize() < client.getCurrentSize()) {
+                    setupParams();
                     history.refresh(client.getCurrentSize());
                 }
             } catch(RemoteException e) {
-                e.printStackTrace();
+                try{
+                    Registry registry = LocateRegistry.getRegistry(
+                                       "98.185.210.172", RemoteBloomFilter.PORT);
+                    history= (RemoteBloomFilter) 
+                                   registry.lookup(RemoteBloomFilter.SERVICE_NAME);
+                } catch(Exception nima) {
+                    nima.printStackTrace();
+                }
             }
         }
     }
