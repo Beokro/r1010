@@ -8,6 +8,7 @@ import time
 import random
 import textwrap
 from random import randint
+import os.path
 
 requestMessage = 'request'
 denyMessage = 'deny'
@@ -60,6 +61,9 @@ class TcpServer( object ):
         self.doLogging( 'server run on address: ' + host + ' port: ' + str( port ), '-1' )
 
     def generateGraph( self ):
+        if not os.path.isfile( 'newAnswer' ):
+            self.createNewAnswer()
+
         with open( 'newAnswer' ) as f:
             content = f.readlines()
 
@@ -86,6 +90,18 @@ class TcpServer( object ):
             self.currentGraph = content[ possibleIndex + 1 ]
             print 'use answer, generate graph for ' + str( self.currentSize )
             return self.defaultGraph()
+
+    def createNewAnswer( self ):
+        with open ( 'answer' ) as f:
+            content = f.readlines()
+        content = [ x.strip() for x in content ]
+        listSize = len( content )
+        lastResult =  content[ listSize - 4 ]
+        lastGraph = content[ listSize - 3 ]
+        with open("newAnswer", "w+") as myfile:
+            myfile.write( lastResult + '\n' )
+            myfile.write( lastGraph + '\n\n\n' )
+
 
     def updateLastResult( self, client, startUp = False ):
         if startUp:
