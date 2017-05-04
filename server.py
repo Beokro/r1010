@@ -24,7 +24,8 @@ syncRequestMessage = 'syncReq'
 syncCompleteMessage = 'syncCom'
 firstBackup = 'first'
 normalBackup = 'normal'
-backupSyncTime = 120
+lastAnswerRequest = 'lastAnsReq'
+backupSyncTime = 5
 
 
 class TcpServer( object ):
@@ -205,6 +206,7 @@ class TcpServer( object ):
             Server -> first candidate port
         '''
         global backupSyncTime
+        global lastAnswerRequest
         while True:
             time.sleep( backupSyncTime )
             self.doLogging( 'periodic sync start', ' ', isServer = True )
@@ -226,6 +228,12 @@ class TcpServer( object ):
                 self.sendPacket( backupSock, [ requestMessage ] )
                 data = self.recvPacket( backupSock, self.currentSize * self.currentSize + 10 )
                 self.currentGraph = data[ 0 ]
+                if self.currentSize != currentSize:
+                    self.sendPacket( backupSock, [ lastAnswerRequest ] )
+                    data = self.recvPacket( backupSock,
+                                            self.currentSize * self.currentSize + 30 )
+
+                    self.recordAnswer( data[ 0 ], data[ 1 ] )
 
             self.sendPacket( backupSock, [ syncCompleteMessage ] )
             self.doLogging( 'currentSize = ' + str( self.currentSize ) +\
@@ -289,6 +297,7 @@ class TcpServer( object ):
     def handleServerToServer( self, client, address, clientID, listeningPort ):
         global syncRequestMessage
         global syncCompleteMessage
+        global lastAnswerRequest
         global firstBackup
         global normalBackup
         self.doLogging( ' is a server', clientID )
@@ -351,6 +360,7 @@ class TcpServer( object ):
         global syncRequestMessage
         global syncCompleteMessage
         global requestMessage
+        global lastAnswerRequest
         '''
             Backup -> sync request
             Server -> current size
@@ -380,8 +390,17 @@ class TcpServer( object ):
             data = self.recvPacket( client, 20 )[ 0 ]
 
         '''
+            Backup -> last answer request
+            Server -> last size
+            Server -> last graph
             Backup -> sync complete
         '''
+        if data == lastAnswerRequest:
+            self.lock.acquire()
+            self.updateLastResult( client )
+            self.lock.release()
+            data = self.recvPacket( client, 20 )[ 0 ]
+
         if data != syncCompleteMessage:
             self.handleUnexpectMessage( client, syncCompleteMessage, data, clientID, True )
             return
