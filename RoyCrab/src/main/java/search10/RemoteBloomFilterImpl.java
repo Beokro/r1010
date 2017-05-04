@@ -137,13 +137,13 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter {
     @Override
     public synchronized void addHistory(int[][] toAdd) throws RemoteException{
         if(elements >= CAP) {
-            backup = BloomFilter.create(graphFunnel, CAP, fpp);
-            backup.putAll(bloomFilter);
             try {
                 backupThread.join();
             } catch (InterruptedException ex) {
                 Logger.getLogger(RemoteBloomFilterImpl.class.getName()).log(Level.SEVERE, null, ex);
             }
+            backup = BloomFilter.create(graphFunnel, CAP, fpp);
+            backup.putAll(bloomFilter);
             backupThread = new BackupThread(this.backup);
             backupThread.start();
             bloomFilter = BloomFilter.create(graphFunnel, CAP, fpp);
