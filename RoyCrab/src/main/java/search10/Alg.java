@@ -336,7 +336,8 @@ public class Alg {
         Alg excalibur = null;
         try 
         { 
-           Registry registry = LocateRegistry.getRegistry(RemoteBloomFilter.PORT);
+           Registry registry = LocateRegistry.getRegistry(
+                                       "98.185.210.172", RemoteBloomFilter.PORT);
            history= (RemoteBloomFilter) 
                                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
            history.setCurrentSize(client.getCurrentSize());
