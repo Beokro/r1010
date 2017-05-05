@@ -152,7 +152,6 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
                 bloomFilter = BloomFilter.create(graphFunnel, CAP, fpp);
                 elements = 0;
             }
-
             backupThread = new BackupThread(this, address);
             backupThread.start();
 
