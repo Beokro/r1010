@@ -4,7 +4,6 @@ import java.io.BufferedWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.IOException;
-import java.lang.NullPointerException;
 import java.net.Socket;
 import java.util.concurrent.TimeUnit;
 import java.util.Random;
@@ -284,7 +283,7 @@ public class TcpClient {
 
 
     public static void main( String[] args ) {
-        TcpClient client = new TcpClient( "192.168.0.14", 7788 );
+        TcpClient client = new TcpClient( "98.185.210.172", 7788 );
         Random rand = new Random();
         int reduce = 0;
         int currentClique = 500;

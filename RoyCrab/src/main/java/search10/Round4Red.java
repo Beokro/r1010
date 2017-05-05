@@ -1,10 +1,7 @@
 package search10;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.BlockingQueue;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 
 public class Round4Red extends Thread {

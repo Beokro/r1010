@@ -1,44 +1,43 @@
 package search10;
-import java.rmi.Remote;
-import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-import java.rmi.server.UnicastRemoteObject;
 import com.google.common.hash.*;
 import java.io.FileInputStream;
-import java.rmi.Naming; 
+import java.io.FileNotFoundException;
 import java.rmi.RemoteException; 
 import java.rmi.server.UnicastRemoteObject;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.io.Serializable;
 
 class BackupThread extends Thread {
-    BloomFilter<int[][]> backup;
+    RemoteBloomFilterImpl toSave;
+    String address;
     
-    BackupThread( BloomFilter<int[][]> backup) {
-        this.backup = backup;
+    BackupThread( RemoteBloomFilterImpl toSave, String address) {
+        this.toSave = toSave;
+        this.address = address;
     }
     @Override
     public void run() {
         FileOutputStream fout = null;
         ObjectOutputStream oos = null;
         try {
-            fout = new FileOutputStream(RemoteBloomFilterImpl.address);
+            fout = new FileOutputStream(this.address);
             oos = new ObjectOutputStream(fout);
-            oos.writeObject(backup);
+            RemoteBloomFilterImpl temp = toSave;
+            toSave = null;
+            oos.writeObject(temp);
 
-            System.out.println("Backup Done");
+            System.out.println("Save Done");
 
             } catch (Exception ex) {
 
                 ex.printStackTrace();
 
             } finally {
-
             if (fout != null) {
                 try {
                         fout.close();
@@ -46,7 +45,6 @@ class BackupThread extends Thread {
                         e.printStackTrace();
                 }
             }
-
             if (oos != null) {
                 try {
                         oos.close();
@@ -54,16 +52,16 @@ class BackupThread extends Thread {
                         e.printStackTrace();
                 }
             }
-
         }
     }
 }
 
-public class RemoteBloomFilterImpl implements RemoteBloomFilter {
-    public static final String address = "./backupBloomFilter";
+public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
+    private static final long serialVersionUID = 233333L;
+    public static final String address = "./remoteBloomFilter.backup";
     BloomFilter<int[][]> bloomFilter; 
     BloomFilter<int[][]> backup;
-    private BackupThread backupThread;
+    private static transient BackupThread backupThread = null;
     private int currentSize;
     private long CAP;
     private double fpp;
@@ -77,43 +75,44 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter {
         graphFunnel = new Funnel<int[][]>() {
             @Override
             public void funnel(int[][] graph2d, PrimitiveSink into) {
-                for(int i = 0; i < currentSize; i++) {
-                    for(int j = i + 1; j < currentSize; j++) {
+                for(int i = 0; i < graph2d.length; i++) {
+                    for(int j = i + 1; j < graph2d[i].length; j++) {
                         into.putInt(graph2d[i][j]);
                     }
                 }
             }
         };
-        bloomFilter = backupOrNew(graphFunnel, CAP, fpp);
+        bloomFilter = BloomFilter.create(graphFunnel, CAP, fpp);
+        elements = 0;
     }
     
-    private static BloomFilter<int[][]> backupOrNew(
-                        Funnel<int[][]> graphFunnel, long CAP, double fpp) {
-        FileInputStream fin = null;
-        ObjectInputStream ois = null;
-        BloomFilter<int[][]> result = null;
+    private static RemoteBloomFilterImpl getOrNull(String address) {
+        FileInputStream f = null;
+        ObjectInputStream o = null;
+        RemoteBloomFilterImpl result = null;
         try {
-            fin = new FileInputStream(address);
-            ois = new ObjectInputStream(fin);
-            result = (BloomFilter<int[][]>) ois.readObject();
+            f = new FileInputStream(address);
+            o = new ObjectInputStream(f);
+            result = (RemoteBloomFilterImpl) o.readObject();
+        } catch(FileNotFoundException e) {
+            
         } catch(IOException e) {
-            result = BloomFilter.create(graphFunnel, CAP, fpp);
+
         } catch (ClassNotFoundException e) {
-            result = BloomFilter.create(graphFunnel, CAP, fpp);
+
         } finally {
-            if (fin != null) {
+            if (f != null) {
                 try {
-                    fin.close();
+                    f.close();
                 } catch (IOException e) {
-                        e.printStackTrace();
+                    e.printStackTrace();
                 }
             }
-
-            if (ois != null) {
+            if (o != null) {
                 try {
-                    ois.close();
+                    o.close();
                 } catch (IOException e) {
-                        e.printStackTrace();
+                    e.printStackTrace();
                 }
             }
         }
@@ -135,20 +134,30 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter {
     }
 
     @Override
-    public synchronized void addHistory(int[][] toAdd) throws RemoteException{
-        if(elements >= CAP) {
-            backup = BloomFilter.create(graphFunnel, CAP, fpp);
-            backup.putAll(bloomFilter);
+    public synchronized void addHistory(int[][] toAdd) throws RemoteException {
+        if((elements % (CAP / 100) == 0 && elements != 0) || elements >= CAP) {
             try {
-                backupThread.join();
-            } catch (InterruptedException ex) {
-                Logger.getLogger(RemoteBloomFilterImpl.class.getName()).log(Level.SEVERE, null, ex);
+                if(backupThread != null) {
+                    backupThread.join();
+                }
+            } catch (Exception ex) {
+            
             }
-            backupThread = new BackupThread(this.backup);
+
+            if(elements >= CAP) {
+
+                // move history in memory to backup
+                backup = BloomFilter.create(graphFunnel, CAP, fpp);
+                backup.putAll(bloomFilter);
+                bloomFilter = BloomFilter.create(graphFunnel, CAP, fpp);
+                elements = 0;
+            }
+
+            backupThread = new BackupThread(this, address);
             backupThread.start();
-            bloomFilter = BloomFilter.create(graphFunnel, CAP, fpp);
-            elements = 0;
+
         }
+        
         boolean result = bloomFilter.put(toAdd);
         if(result) {
             elements += 1;
@@ -157,9 +166,12 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter {
 
     @Override
     public boolean inHistory(int[][] graph2d) throws RemoteException {
+        if(backup == null) {
+            return bloomFilter.mightContain(graph2d);
+        }
         return backup.mightContain(graph2d) || bloomFilter.mightContain(graph2d);
     }
-    
+
     @Override
     public synchronized void setCurrentSize(int currentSize) throws RemoteException {
         this.currentSize = currentSize;
@@ -168,10 +180,13 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter {
     public static void main(String[] args) {
 
         try {
-            RemoteBloomFilterImpl filter = new RemoteBloomFilterImpl();
+            RemoteBloomFilterImpl filter = getOrNull(RemoteBloomFilterImpl.address);
+            if(filter == null) {
+                filter = new RemoteBloomFilterImpl();
+            }
+            
             RemoteBloomFilter stub = (RemoteBloomFilter) UnicastRemoteObject.exportObject(filter, 0);
             Registry registry = LocateRegistry.createRegistry(RemoteBloomFilter.PORT);
-            //Registry registry = LocateRegistry.getRegistry("98.185.210.172", RemoteBloomFilter.PORT);
             registry.bind(RemoteBloomFilter.SERVICE_NAME, stub);
             System.out.println("Remote bloom filter starts");
         } catch (Exception e) {

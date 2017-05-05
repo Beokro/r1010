@@ -1,18 +1,9 @@
 package search10;
 import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
-import java.util.Set;
-import java.util.HashSet;
 import java.util.Objects;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.Random;
-import java.net.MalformedURLException;
-import com.google.common.hash.*;
-import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -103,7 +94,7 @@ class NodeDegPair {
 }
 
 public class Alg {
-    public static TcpClient client = new TcpClient("98.185.210.172", 7788);
+    public static TcpClient client = new TcpClient("98.185.210.172", 6666);
     public List<Edge> graph = new ArrayList<Edge>();
     public int[][] graph2d;
     private int currentSize;
@@ -301,7 +292,7 @@ public class Alg {
             current = getRandomNeighbor();
             if(current < cliques) { 
                 accept();
-                if(current <= cliques / 10 * 7 || current < 10000) {
+                if(current <= cliques / 10 * 7 && cliques > 10000) {
                     client.updateFromAlg(currentSize, current, graph2d);
                     if(currentSize < client.getCurrentSize() ||
                             current > client.getCliqueSize()) {

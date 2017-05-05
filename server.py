@@ -8,6 +8,7 @@ import time
 import random
 import textwrap
 from random import randint
+import os.path
 
 requestMessage = 'request'
 denyMessage = 'deny'
@@ -25,11 +26,15 @@ syncCompleteMessage = 'syncCom'
 firstBackup = 'first'
 normalBackup = 'normal'
 lastAnswerRequest = 'lastAnsReq'
+tempFileName = 'tempFile'
+answerFileName = 'answer'
+newAnswerFileName = 'newAnswer'
 backupSyncTime = 5
+answerSaveTime = 600
 
 
 class TcpServer( object ):
-    def __init__( self, host, port, destHost, destPort, timeout, logDir, backup, currentSize ):
+    def __init__( self, host, port, destHost, destPort, timeout, logDir, backup, currentSize, readFromTemp ):
         self.host = host
         self.port = port
         self.destHost = destHost
@@ -52,13 +57,20 @@ class TcpServer( object ):
         self.sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
         self.sock.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
         self.sock.bind( ( self.host, self.port ) )
+        self.readFromTemp = readFromTemp
         logging.basicConfig( format = '%(asctime)s %(levelname)s: %(message)s',
                              filename = self.logDir,
                              level = logging.DEBUG )
         self.doLogging( 'server run on address: ' + host + ' port: ' + str( port ), '-1' )
 
     def generateGraph( self ):
-        with open( 'answer' ) as f:
+        global newAnswerFileName
+
+        # set the lastResult, lastGraph. return new current graph
+        if not os.path.isfile( newAnswerFileName ):
+            self.createNewAnswer()
+
+        with open( newAnswerFileName ) as f:
             content = f.readlines()
 
         content = [ x.strip() for x in content ]
@@ -66,7 +78,7 @@ class TcpServer( object ):
         self.lastResult = int( content[ listSize - 4 ] )
         self.lastGraph = content[ listSize - 3 ]
 
-        if self.currentSize != -1:
+        elif self.currentSize != -1:
             target = self.currentSize
             self.lastResult = self.currentSize - 1
             self.lastGraph = '0' * self.lastResult * self.lastResult
@@ -76,7 +88,9 @@ class TcpServer( object ):
             self.lastGraph = content[ listSize - 3 ]
 
         possibleIndex = ( target - 25 - 1 ) * 4
-        if target < 25 or target - 1 > self.lastResult or possibleIndex >= len( content ) or\
+        if self.readFromTemp:
+            return self.getTempGraph()
+        elif target < 25 or target - 1 > self.lastResult or possibleIndex >= len( content ) or\
            int( content[ possibleIndex ] ) != target - 1:
             print 'random generate targe = ' + str( target )
             return self.defaultGraph( True )
@@ -84,6 +98,25 @@ class TcpServer( object ):
             self.currentGraph = content[ possibleIndex + 1 ]
             print 'use answer, generate graph for ' + str( self.currentSize )
             return self.defaultGraph()
+
+    def createNewAnswer( self ):
+        global answerFileName
+        global newAnswerFileName
+
+        with open ( answerFileName ) as f:
+            content = f.readlines()
+        content = [ x.strip() for x in content ]
+        listSize = len( content )
+        lastResult =  content[ listSize - 4 ]
+        lastGraph = content[ listSize - 3 ]
+        with open( newAnswerFileName, "w+" ) as myfile:
+            myfile.write( lastResult + '\n' )
+            myfile.write( lastGraph + '\n\n\n' )
+
+    def getTempGraph():
+        with open ( tempFileName ) as f:
+            content = f.readlines()
+        return content[ 1 ]
 
     def updateLastResult( self, client, startUp = False ):
         if startUp:
@@ -121,10 +154,16 @@ class TcpServer( object ):
 
     def listen( self ):
         self.sock.listen( 200 )
+
+        ttt = threading.Thread( target = self.saveTempAnswer )
+        ttt.daemon = True
+        ttt.start()
+
         if self.backup:
             tt = threading.Thread( target = self.contactMainServer )
             tt.daemon = True
             tt.start()
+
         while True:
             client, address = self.sock.accept()
             # need to be more careful about the timeout
@@ -134,6 +173,17 @@ class TcpServer( object ):
                                   args = ( client, address, str( self.counter ) ) )
             t.daemon = True
             t.start()
+
+
+    def saveTempAnswer( self ):
+        global answerSaveTime
+        global tempFileName
+        with open( tempFileName, "w+" ) as myfile:
+            self.lock.acquire()
+            myfile.write( str( self.currentSize ) + '\n' )
+            myfile.write( self.currentGraph + '\n\n\n' )
+            self.lock.release()
+        time.sleep( answerSaveTime )
 
 
     # ********************************************************
@@ -537,6 +587,7 @@ class TcpServer( object ):
             self.sendPacket( client, [ tranmissionCompleteMessage ] )
 
     def recordAnswer( self, size = ' ', graph = ' '):
+        global answerFileName
         print 'record size = ' + size
         if size == ' ':
             size = str( self.currentSize )
@@ -545,9 +596,12 @@ class TcpServer( object ):
         self.lastResult = size
         self.lastGraph = graph
 
-        with open("answer", "a+") as myfile:
-                myfile.write( size + '\n' )
-                myfile.write( graph + '\n\n\n' )
+        with open( answerFileName, "a+" ) as myfile:
+            myfile.write( size + '\n' )
+            myfile.write( graph + '\n\n\n' )
+        with open( newAnswerFileName, "w+" ) as myfile:
+            myfile.write( size + '\n' )
+            myfile.write( graph + '\n\n\n' )
 
     def denyNewGraph( self, client, tie, clientID ):
         # deny the matrix, not need to send if it is worse than current one
@@ -630,14 +684,15 @@ class TcpServer( object ):
 
 
 def usage():
-    print 'python server.py [-h] [-p portnumber] [-t timeout] [-l logDir] [-a destAddr] [-d destPort] [-b]'
+    print 'python server.py [-h] [-p portnumber] [-t timeout] [-l logDir] [-a destAddr] [-d destPort] [-b] [-r]'
 
 
 if __name__ == "__main__":
     try:
-        opts, args = getopt.getopt( sys.argv[ 1: ], "p:ht:l:a:d:bc:",
+        opts, args = getopt.getopt( sys.argv[ 1: ], "p:ht:l:a:d:bc:r",
                                     [ "port=", "help", "timeout=", "log=",
-                                      "addrdest=", "destport", "backup", "currentSize=" ] )
+                                      "addrdest=", "destport", "backup",
+                                      "currentSize=", "readFromTemp" ] )
     except getopt.GetoptError as err:
         print str( err )
         usage()
@@ -650,6 +705,7 @@ if __name__ == "__main__":
     destPort = 7788
     backup = False
     currentSize = -1
+    readFromTemp = False
 
     for o, a in opts:
         if o in ( "-h", "--help" ):
@@ -669,13 +725,17 @@ if __name__ == "__main__":
             backup = True
         elif o in ( "-c", "--currentSize" ):
             currentSize = int( a )
+        elif o in ( "-r", "--readFromTemp" ):
+            readFromTemp = True
         else:
             assert False, "unhandled option"
 
     if backup and logDir == 'server.log':
         logDir = 'backup.log'
+    if readFromTemp:
+        currentSize = -1
     try:
-        temp = TcpServer( '', port, destIP, destPort, timeout, logDir, backup, currentSize )
+        temp = TcpServer( '', port, destIP, destPort, timeout, logDir, backup, currentSize, readFromTemp )
         temp.listen()
     except KeyboardInterrupt:
         print '^C received, shutting down the web server'

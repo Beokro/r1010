@@ -4,14 +4,14 @@
  * and open the template in the editor.
  */
 package search10;
-import com.google.common.hash.BloomFilter;
+import java.io.Serializable;
 import java.rmi.*;
 /**
  *
  * @author Seraph_Roy
  */
-public interface RemoteBloomFilter extends Remote {
-    public static int PORT = 7789;
+public interface RemoteBloomFilter extends Remote, Serializable {
+    public static int PORT = 6666;
     public static String SERVICE_NAME = "RemoteBloomFilter";
     public boolean inHistory(int[][] graph2d) throws RemoteException;
     public void addHistory(int[][] toAdd) throws RemoteException;

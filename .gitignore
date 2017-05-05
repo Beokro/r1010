@@ -38,3 +38,4 @@
 *.log
 
 RoyCrab/target/*/
+RoyCrab/remoteBloomFilter.backup
