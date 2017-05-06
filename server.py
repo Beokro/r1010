@@ -42,6 +42,7 @@ class TcpServer( object ):
         self.timeout = timeout
         self.logDir = logDir
         self.backup = backup
+        self.readFromTemp = readFromTemp
         self.firstCandidateAddr = ' '
         self.firstCandidatePort = -1
         self.myAddr = ' '
@@ -57,7 +58,6 @@ class TcpServer( object ):
         self.sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
         self.sock.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
         self.sock.bind( ( self.host, self.port ) )
-        self.readFromTemp = readFromTemp
         logging.basicConfig( format = '%(asctime)s %(levelname)s: %(message)s',
                              filename = self.logDir,
                              level = logging.DEBUG )
