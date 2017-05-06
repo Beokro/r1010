@@ -94,7 +94,7 @@ class NodeDegPair {
 }
 
 public class Alg {
-    public static TcpClient client = new TcpClient("128.111.84.181", 7788);
+    public static TcpClient client = null;//new TcpClient("128.111.84.181", 7788);
     public List<Edge> graph = new ArrayList<Edge>();
     public int[][] graph2d;
     private int currentSize;
@@ -324,13 +324,11 @@ public class Alg {
     }
     public static void main( String[] args ) {
 
-        Alg excalibur = null;
-        excalibur = new Alg();
-        setupParams();
+        
         try 
         { 
            Registry registry = LocateRegistry.getRegistry(
-                                        RemoteBloomFilter.PORT);
+                                        "128.111.84.156", RemoteBloomFilter.PORT);
            
            history= (RemoteBloomFilter)
                                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
@@ -340,6 +338,9 @@ public class Alg {
         { 
            e.printStackTrace(); 
         } 
+        Alg excalibur = null;
+        excalibur = new Alg();
+        setupParams();
         while(true) {
             excalibur = new Alg();
             excalibur.start();
