@@ -94,7 +94,7 @@ class NodeDegPair {
 }
 
 public class Alg {
-    public static TcpClient client = new TcpClient("98.185.210.172", 6666);
+    public static TcpClient client = new TcpClient("128.111.84.181", 7788);
     public List<Edge> graph = new ArrayList<Edge>();
     public int[][] graph2d;
     private int currentSize;
@@ -128,7 +128,7 @@ public class Alg {
         } catch(RemoteException e) {
             try{
                     Registry registry = LocateRegistry.getRegistry(
-                                       "98.185.210.172", RemoteBloomFilter.PORT);
+                                       "128.111.84.181", RemoteBloomFilter.PORT);
                     history= (RemoteBloomFilter) 
                                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
                 } catch(Exception nima) {
@@ -160,7 +160,7 @@ public class Alg {
         } catch(RemoteException e) {
             try{
                     Registry registry = LocateRegistry.getRegistry(
-                                       "98.185.210.172", RemoteBloomFilter.PORT);
+                                       "128.111.84.181", RemoteBloomFilter.PORT);
                     history= (RemoteBloomFilter) 
                                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
                 } catch(Exception nima) {
@@ -351,7 +351,7 @@ public class Alg {
             } catch(RemoteException e) {
                 try{
                     Registry registry = LocateRegistry.getRegistry(
-                                       "98.185.210.172", RemoteBloomFilter.PORT);
+                                       "128.111.84.181", RemoteBloomFilter.PORT);
                     history= (RemoteBloomFilter) 
                                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
                 } catch(Exception nima) {
