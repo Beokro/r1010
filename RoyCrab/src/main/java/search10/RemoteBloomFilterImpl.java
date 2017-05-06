@@ -179,7 +179,7 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
     public static void main(String[] args) {
 
         try {
-            RemoteBloomFilterImpl filter = getOrNull(RemoteBloomFilterImpl.address);
+            RemoteBloomFilter filter = getOrNull(RemoteBloomFilterImpl.address);
             if(filter == null) {
                 filter = new RemoteBloomFilterImpl();
             }
