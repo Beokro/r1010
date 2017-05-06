@@ -70,7 +70,7 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
 
     RemoteBloomFilterImpl() throws RemoteException{
         
-        CAP = 400000L;
+        CAP = 40L;
         fpp = 0.000000001;
         graphFunnel = new Funnel<int[][]>() {
             @Override
