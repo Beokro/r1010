@@ -184,7 +184,7 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
                 filter = new RemoteBloomFilterImpl();
             }
             
-            RemoteBloomFilter stub = (RemoteBloomFilter) UnicastRemoteObject.exportObject(filter, 0);
+            RemoteBloomFilter stub = (RemoteBloomFilter) UnicastRemoteObject.exportObject(filter, RemoteBloomFilter.PORT);
             Registry registry = LocateRegistry.createRegistry(RemoteBloomFilter.PORT);
             registry.bind(RemoteBloomFilter.SERVICE_NAME, stub);
             System.out.println("Remote bloom filter starts");

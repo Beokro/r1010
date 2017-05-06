@@ -94,7 +94,9 @@ class NodeDegPair {
 }
 
 public class Alg {
-    public static TcpClient client = null;//new TcpClient("128.111.84.181", 7788);
+    private String serverIp;
+    private String bloomFilterIp;
+    public static TcpClient client = null;
     public List<Edge> graph = new ArrayList<Edge>();
     public int[][] graph2d;
     private int currentSize;
@@ -105,8 +107,11 @@ public class Alg {
     static int interval;
     static int step;
 
-    Alg() {
+    Alg(String serverIp, String bloomFilterIp) {
         graph = new ArrayList<Edge>();
+        this.serverIp = serverIp;
+        this.bloomFilterIp = bloomFilterIp;
+        setupParams();
     }
 
     Edge flip(Edge input) {
@@ -128,7 +133,7 @@ public class Alg {
         } catch(RemoteException e) {
             try{
                     Registry registry = LocateRegistry.getRegistry(
-                                       "128.111.84.181", RemoteBloomFilter.PORT);
+                                       bloomFilterIp, RemoteBloomFilter.PORT);
                     history= (RemoteBloomFilter) 
                                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
                 } catch(Exception nima) {
@@ -160,7 +165,7 @@ public class Alg {
         } catch(RemoteException e) {
             try{
                     Registry registry = LocateRegistry.getRegistry(
-                                       "128.111.84.181", RemoteBloomFilter.PORT);
+                                       bloomFilterIp, RemoteBloomFilter.PORT);
                     history= (RemoteBloomFilter) 
                                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
                 } catch(Exception nima) {
@@ -324,11 +329,23 @@ public class Alg {
     }
     public static void main( String[] args ) {
 
+        if(args.length < 2) {
+            System.out.println("Usage: java -jar <jar file> "
+                                + "<server ip> <bloomfilter ip>");
+            //return;
+        }
+        String serverIp = "128.111.84.201";
+        String bloomFilterIp = "128.111.84.201";
+        
+        Alg excalibur = null;
+        
+        Alg.client = new TcpClient(serverIp, 7788);
+        excalibur = new Alg(serverIp, bloomFilterIp);
         
         try 
         { 
            Registry registry = LocateRegistry.getRegistry(
-                                        "128.111.84.156", RemoteBloomFilter.PORT);
+                                        bloomFilterIp, RemoteBloomFilter.PORT);
            
            history= (RemoteBloomFilter)
                                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
@@ -338,11 +355,9 @@ public class Alg {
         { 
            e.printStackTrace(); 
         } 
-        Alg excalibur = null;
-        excalibur = new Alg();
-        setupParams();
+        
         while(true) {
-            excalibur = new Alg();
+            excalibur = new Alg(serverIp, bloomFilterIp);
             excalibur.start();
             try {
                 if(history.getCurrentSize() < client.getCurrentSize()) {
@@ -352,7 +367,7 @@ public class Alg {
             } catch(RemoteException e) {
                 try{
                     Registry registry = LocateRegistry.getRegistry(
-                                       "128.111.84.181", RemoteBloomFilter.PORT);
+                                       bloomFilterIp, RemoteBloomFilter.PORT);
                     history= (RemoteBloomFilter) 
                                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
                 } catch(Exception nima) {
