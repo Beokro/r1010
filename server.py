@@ -78,7 +78,7 @@ class TcpServer( object ):
         self.lastResult = int( content[ listSize - 4 ] )
         self.lastGraph = content[ listSize - 3 ]
 
-        elif self.currentSize != -1:
+        if self.currentSize != -1:
             target = self.currentSize
             self.lastResult = self.currentSize - 1
             self.lastGraph = '0' * self.lastResult * self.lastResult
