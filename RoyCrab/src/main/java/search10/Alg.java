@@ -341,15 +341,17 @@ public class Alg {
         
         Alg.client = new TcpClient(serverIp, 7788);
         excalibur = new Alg(serverIp, bloomFilterIp);
-        
+        //System.setProperty("java.rmi.server.hostname",bloomFilterIp);
+        //System.setProperty("java.rmi.useLocalHostname", "false");
+
         try 
         { 
            Registry registry = LocateRegistry.getRegistry(
                                         bloomFilterIp, RemoteBloomFilter.PORT);
-           System.out.println(registry.list());
+           System.out.println(registry.list()[0]);
            history = (RemoteBloomFilter)
                                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
-           history.setCurrentSize(client.getCurrentSize());
+           //history.setCurrentSize(client.getCurrentSize());
         } 
         catch (Exception e) 
         { 
