@@ -283,7 +283,7 @@ public class TcpClient {
 
 
     public static void main( String[] args ) {
-        TcpClient client = new TcpClient( "128.111.84.181", 7788 );
+        TcpClient client = new TcpClient( "128.111.84.201", 7788 );
         Random rand = new Random();
         int reduce = 0;
         int currentClique = 500;
