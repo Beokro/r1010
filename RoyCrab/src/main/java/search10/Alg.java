@@ -334,48 +334,50 @@ public class Alg {
                                 + "<server ip> <bloomfilter ip>");
             //return;
         }
-        String serverIp = "128.111.84.201";
-        String bloomFilterIp = "128.111.84.201";
+        //String serverIp = "128.111.84.201";
+        //String bloomFilterIp = "128.111.84.201";
         
-        Alg excalibur = null;
+        //Alg excalibur = null;
         
-        Alg.client = new TcpClient(serverIp, 7788);
-        excalibur = new Alg(serverIp, bloomFilterIp);
-        //System.setProperty("java.rmi.server.hostname",bloomFilterIp);
+        //Alg.client = new TcpClient(serverIp, 7788);
+        //excalibur = new Alg(serverIp, bloomFilterIp);
+        System.setProperty("java.rmi.server.hostname","euca-128-111-84-201.eucalyptus.cloud.eci.ucsb.edu");
         //System.setProperty("java.rmi.useLocalHostname", "false");
+        System.setProperty("java.net.preferIPv4Stack", "true");
 
         try 
         { 
            Registry registry = LocateRegistry.getRegistry(
-                                        bloomFilterIp, RemoteBloomFilter.PORT);
+                                        "euca-128-111-84-201.eucalyptus.cloud.eci.ucsb.edu", RemoteBloomFilter.PORT);
            System.out.println(registry.list()[0]);
            history = (RemoteBloomFilter)
                                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
            //history.setCurrentSize(client.getCurrentSize());
+           //history.setCurrentSize(3);
         } 
         catch (Exception e) 
         { 
            e.printStackTrace(); 
         } 
         
-        while(true) {
-            excalibur = new Alg(serverIp, bloomFilterIp);
-            excalibur.start();
-            try {
-                if(history.getCurrentSize() < client.getCurrentSize()) {
-                    setupParams();
-                    history.refresh(client.getCurrentSize());
-                }
-            } catch(RemoteException e) {
-                try{
-                    Registry registry = LocateRegistry.getRegistry(
-                                       bloomFilterIp, RemoteBloomFilter.PORT);
-                    history= (RemoteBloomFilter) 
-                                   registry.lookup(RemoteBloomFilter.SERVICE_NAME);
-                } catch(Exception nima) {
-                    nima.printStackTrace();
-                }
-            }
-        }
+        //while(true) {
+        //    excalibur = new Alg(serverIp, bloomFilterIp);
+        //    excalibur.start();
+        //    try {
+        //        if(history.getCurrentSize() < client.getCurrentSize()) {
+        //            setupParams();
+        //            history.refresh(client.getCurrentSize());
+        //        }
+        //    } catch(RemoteException e) {
+        //        try{
+        //            Registry registry = LocateRegistry.getRegistry(
+        //                               bloomFilterIp, RemoteBloomFilter.PORT);
+        //            history= (RemoteBloomFilter) 
+        //                           registry.lookup(RemoteBloomFilter.SERVICE_NAME);
+        //        } catch(Exception nima) {
+        //            nima.printStackTrace();
+        //        }
+        //    }
+        //}
     }
 }
