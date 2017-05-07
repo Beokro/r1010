@@ -74,7 +74,7 @@ class NodeDegPair {
         this.node1 = node1;
         this.node2 = node2;
     } 
-    
+
     @Override
     public boolean equals(Object o) {
         if(!(o instanceof NodeDegPair)) {
@@ -132,13 +132,13 @@ public class Alg {
             history.addHistory(graph2d);
         } catch(RemoteException e) {
             try{
-                    Registry registry = LocateRegistry.getRegistry(
-                                       bloomFilterIp, RemoteBloomFilter.PORT);
-                    history= (RemoteBloomFilter) 
-                                   registry.lookup(RemoteBloomFilter.SERVICE_NAME);
-                } catch(Exception nima) {
-                    nima.printStackTrace();
-                }
+                Registry registry = LocateRegistry.getRegistry(
+                        bloomFilterIp, RemoteBloomFilter.PORT);
+                history= (RemoteBloomFilter) 
+                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
+            } catch(Exception nima) {
+
+            }
         }
         graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
     }
@@ -164,13 +164,13 @@ public class Alg {
             result = history.inHistory(graph2d);
         } catch(RemoteException e) {
             try{
-                    Registry registry = LocateRegistry.getRegistry(
-                                       bloomFilterIp, RemoteBloomFilter.PORT);
-                    history= (RemoteBloomFilter) 
-                                   registry.lookup(RemoteBloomFilter.SERVICE_NAME);
-                } catch(Exception nima) {
-                    nima.printStackTrace();
-                }
+                Registry registry = LocateRegistry.getRegistry(
+                        bloomFilterIp, RemoteBloomFilter.PORT);
+                history= (RemoteBloomFilter) 
+                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
+            } catch(Exception nima) {
+
+            }
         }
         graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
         return result;
@@ -223,33 +223,33 @@ public class Alg {
             mappers.add(0, thisRound.map);
             reducers.add(thisRound.reduce);
         }
-        
+
         // start maps
         for(int i = 0; i < workers; i++) {
             mappers.get(i).start();
         }
         //end maps
         for(int i = 0; i < workers; i++) {
-           try {
+            try {
                 mappers.get(i).join();
             } catch(InterruptedException e) {
                 e.printStackTrace();
             } 
         }
-        
+
         // start reds
         for(int i = 0; i < workers; i++) {
             reducers.get(i).start();
         }
         //end reds
         for(int i = 0; i < workers; i++) {
-           try {
+            try {
                 reducers.get(i).join();
             } catch(InterruptedException e) {
                 e.printStackTrace();
             } 
         }
-        
+
     }
 
     private long countCliques() {
@@ -282,9 +282,9 @@ public class Alg {
         currentSize = client.getCurrentSize();
         Random rand = new Random(System.currentTimeMillis());
         int count = 0;
-        
+
         while(cliques != 0) {
-            
+
             if(count >= interval) {
                 client.updateFromAlg(currentSize, cliques, graph2d);
                 if(currentSize < client.getCurrentSize() ||
@@ -302,12 +302,12 @@ public class Alg {
                     if(currentSize < client.getCurrentSize() ||
                             current > client.getCliqueSize()) {
                         return;
-                    }
+                            }
                 }
                 cliques = current;                                            
             } else {                                                          
                 double prob =                                                 
-                 Math.pow(Math.E, ((double)(cliques - current))/((double)t1));
+                    Math.pow(Math.E, ((double)(cliques - current))/((double)t1));
                 if(prob >= rand.nextDouble() + 0.0000001) { 
                     accept();
                     cliques = current;
@@ -331,53 +331,47 @@ public class Alg {
 
         if(args.length < 2) {
             System.out.println("Usage: java -jar <jar file> "
-                                + "<server ip> <bloomfilter ip>");
-            //return;
+                    + "<server ip> <bloomfilter ip>");
+            return;
         }
-        //String serverIp = "128.111.84.201";
-        //String bloomFilterIp = "128.111.84.201";
-        
-        //Alg excalibur = null;
-        
-        //Alg.client = new TcpClient(serverIp, 7788);
-        //excalibur = new Alg(serverIp, bloomFilterIp);
-        //System.setProperty("java.rmi.server.hostname","euca-128-111-84-201.eucalyptus.cloud.eci.ucsb.edu");
-        //System.setProperty("java.rmi.useLocalHostname", "false");
-        //System.setProperty("java.net.preferIPv4Stack", "true");
+        String serverIp = args[0];
+        String bloomFilterIp = args[1];
+
+        Alg excalibur = null;
+
+        Alg.client = new TcpClient(serverIp, 7788);
 
         try 
         { 
-           Registry registry = LocateRegistry.getRegistry(
-                                        "euca-128-111-84-201.eucalyptus.cloud.eci.ucsb.edu", RemoteBloomFilter.PORT);
-           System.out.println(registry.list()[0]);
-           history = (RemoteBloomFilter)
-                                   registry.lookup(RemoteBloomFilter.SERVICE_NAME);
-           //history.setCurrentSize(client.getCurrentSize());
-           history.setCurrentSize(3);
+            Registry registry = LocateRegistry.getRegistry(
+                    bloomFilterIp, RemoteBloomFilter.PORT);
+            history = (RemoteBloomFilter)
+                registry.lookup(RemoteBloomFilter.SERVICE_NAME);
         } 
         catch (Exception e) 
         { 
-           e.printStackTrace(); 
+            e.printStackTrace(); 
         } 
-        
-        //while(true) {
-        //    excalibur = new Alg(serverIp, bloomFilterIp);
-        //    excalibur.start();
-        //    try {
-        //        if(history.getCurrentSize() < client.getCurrentSize()) {
-        //            setupParams();
-        //            history.refresh(client.getCurrentSize());
-        //        }
-        //    } catch(RemoteException e) {
-        //        try{
-        //            Registry registry = LocateRegistry.getRegistry(
-        //                               bloomFilterIp, RemoteBloomFilter.PORT);
-        //            history= (RemoteBloomFilter) 
-        //                           registry.lookup(RemoteBloomFilter.SERVICE_NAME);
-        //        } catch(Exception nima) {
-        //            nima.printStackTrace();
-        //        }
-        //    }
-        //}
+
+        System.out.println("Alg start");
+        while(true) {
+            excalibur = new Alg(serverIp, bloomFilterIp);
+            excalibur.start();
+            try {
+                if(history.getCurrentSize() < client.getCurrentSize()) {
+                    setupParams();
+                    history.refresh(client.getCurrentSize());
+                }
+            } catch(RemoteException e) {
+                try{
+                    Registry registry = LocateRegistry.getRegistry(
+                            bloomFilterIp, RemoteBloomFilter.PORT);
+                    history= (RemoteBloomFilter) 
+                        registry.lookup(RemoteBloomFilter.SERVICE_NAME);
+                } catch(Exception nima) {
+
+                }
+            }
+        }
     }
 }

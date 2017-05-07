@@ -4,8 +4,7 @@ JMX_PORT=9011
  
 RMI_PORT=9010
  
-RMI_HOST="euca-128-111-84-201.eucalyptus.cloud.eci.ucsb.edu"
- 
+RMI_HOST=`curl -s http://169.254.169.254/latest/meta-data/public-hostname` 
 JAVA_OPTS="-Dcom.sun.management.jmxremote "
 JAVA_OPTS="${JAVA_OPTS} -Dcom.sun.management.jmxremote.local.only=false "
 JAVA_OPTS="${JAVA_OPTS} -Dcom.sun.management.jmxremote.port=${JMX_PORT} "
