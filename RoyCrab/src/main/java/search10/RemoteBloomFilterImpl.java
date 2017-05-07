@@ -13,6 +13,7 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 class BackupThread extends Thread {
@@ -35,7 +36,7 @@ class BackupThread extends Thread {
             oos.writeObject(temp);
 
             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
-            RemoteBloomFilterImpl.log.finest(timeStamp + " Save Done");
+            RemoteBloomFilterImpl.log.info(timeStamp + " Save Done");
 
             } catch (Exception ex) {
 
@@ -132,13 +133,13 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
         this.currentSize = currentSize;
         bloomFilter = BloomFilter.create(graphFunnel, CAP, fpp);
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
-        log.finest(timeStamp + " Refresh");
+        log.info(timeStamp + " Refresh");
     }
 
     @Override
     public int getCurrentSize() throws RemoteException{
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
-        log.finest(timeStamp + " Get current size");
+        log.info(timeStamp + " Get current size");
         return currentSize;
     }
 
@@ -162,7 +163,7 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
                 elements = 0;
             }
             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
-            log.finest(timeStamp + " Start Backup");
+            log.info(timeStamp + " Start Backup");
             backupThread = new BackupThread(this, address);
             backupThread.start();
 
@@ -173,7 +174,7 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
             elements += 1;
         }
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
-        log.finest(timeStamp + " History added");
+        log.info(timeStamp + " History added");
     }
 
     @Override
@@ -182,7 +183,7 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
             return bloomFilter.mightContain(graph2d);
         }
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
-        log.finest(timeStamp + " check in history");
+        log.info(timeStamp + " check in history");
         return backup.mightContain(graph2d) || bloomFilter.mightContain(graph2d);
     }
 
@@ -190,13 +191,14 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
     public synchronized void setCurrentSize(int currentSize) throws RemoteException {
         this.currentSize = currentSize;
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
-        log.finest(timeStamp + " Set current size");
+        log.info(timeStamp + " Set current size");
     }
 
     public static void main(String[] args) {
 
         try {
             RemoteBloomFilter filter = getOrNull(RemoteBloomFilterImpl.address);
+            RemoteBloomFilterImpl.log.setLevel(Level.INFO);
             if(filter == null) {
                 filter = new RemoteBloomFilterImpl();
             }
@@ -204,8 +206,8 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
             RemoteBloomFilter stub = (RemoteBloomFilter) UnicastRemoteObject.exportObject(filter, RemoteBloomFilter.PORT);
             Registry registry = LocateRegistry.createRegistry(RemoteBloomFilter.PORT);
             registry.bind(RemoteBloomFilter.SERVICE_NAME, stub);
-            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
-            log.finest(timeStamp + " Remote bloom filter starts");
+            String timeStamp = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(Calendar.getInstance().getTime());
+            log.info(timeStamp + " Remote bloom filter starts");
         } catch (Exception e) {
             e.printStackTrace();
         }
