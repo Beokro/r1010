@@ -14,4 +14,4 @@ JAVA_OPTS="${JAVA_OPTS} -Dcom.sun.management.jmxremote.ssl=false"
 JAVA_OPTS="${JAVA_OPTS} -Djava.rmi.server.hostname=${RMI_HOST}"
 JAVA_OPTS="${JAVA_OPTS} -Djava.net.preferIPv4Stack=true "
 JAVA_OPTS="${JAVA_OPTS} -Dcom.sun.management.jmxremote.rmi.port=${RMI_PORT}"
-
+java $JAVA_OPTS -cp target/RoyCrab-2.0-jar-with-dependencies.jar search10.RemoteBloomFilterImpl

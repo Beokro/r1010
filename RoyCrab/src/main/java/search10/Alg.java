@@ -353,7 +353,7 @@ public class Alg {
            history = (RemoteBloomFilter)
                                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
            //history.setCurrentSize(client.getCurrentSize());
-           //history.setCurrentSize(3);
+           history.setCurrentSize(3);
         } 
         catch (Exception e) 
         { 
