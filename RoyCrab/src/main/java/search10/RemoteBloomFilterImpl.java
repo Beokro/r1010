@@ -126,10 +126,12 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
         }
         this.currentSize = currentSize;
         bloomFilter = BloomFilter.create(graphFunnel, CAP, fpp);
+        System.out.println("Refresh");
     }
 
     @Override
     public int getCurrentSize() throws RemoteException{
+        System.out.println("Get current size");
         return currentSize;
     }
 
@@ -152,6 +154,7 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
                 bloomFilter = BloomFilter.create(graphFunnel, CAP, fpp);
                 elements = 0;
             }
+            System.out.println("Start Backup");
             backupThread = new BackupThread(this, address);
             backupThread.start();
 
@@ -161,6 +164,7 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
         if(result) {
             elements += 1;
         }
+        System.out.println("History added");
     }
 
     @Override
@@ -168,12 +172,14 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
         if(backup == null) {
             return bloomFilter.mightContain(graph2d);
         }
+        System.out.println("check in history");
         return backup.mightContain(graph2d) || bloomFilter.mightContain(graph2d);
     }
 
     @Override
     public synchronized void setCurrentSize(int currentSize) throws RemoteException {
         this.currentSize = currentSize;
+        System.out.println("Set current size");
     }
 
     public static void main(String[] args) {
