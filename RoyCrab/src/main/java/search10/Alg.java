@@ -341,9 +341,9 @@ public class Alg {
         
         //Alg.client = new TcpClient(serverIp, 7788);
         //excalibur = new Alg(serverIp, bloomFilterIp);
-        System.setProperty("java.rmi.server.hostname","euca-128-111-84-201.eucalyptus.cloud.eci.ucsb.edu");
+        //System.setProperty("java.rmi.server.hostname","euca-128-111-84-201.eucalyptus.cloud.eci.ucsb.edu");
         //System.setProperty("java.rmi.useLocalHostname", "false");
-        System.setProperty("java.net.preferIPv4Stack", "true");
+        //System.setProperty("java.net.preferIPv4Stack", "true");
 
         try 
         { 
