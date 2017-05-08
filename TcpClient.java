@@ -1,4 +1,3 @@
-package search10;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.InputStreamReader;
@@ -283,7 +282,7 @@ public class TcpClient {
 
 
     public static void main( String[] args ) {
-        TcpClient client = new TcpClient( "192.168.0.14", 7788 );
+        TcpClient client = new TcpClient( "127.0.0.1", 7788 );
         Random rand = new Random();
         int reduce = 0;
         int currentClique = 500;
@@ -312,7 +311,9 @@ public class TcpClient {
             if ( currentClique <= 0 ) {
                 break;
             }
-            client.updateFromAlg( 5, currentClique, graph );
+            // client.updateFromAlg( 5, currentClique, graph );
+            client.updateFromAlg( 5, 0, graph );
+            break;
         }
 
         client.close();
