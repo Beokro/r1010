@@ -7,9 +7,11 @@ import getopt
 import time
 import random
 import textwrap
-from random import randint
 import os.path
-
+import smtplib
+from random import randint
+from email.MIMEMultipart import MIMEMultipart
+from email.MIMEText import MIMEText
 requestMessage = 'request'
 denyMessage = 'deny'
 tieMessage = 'tie'
@@ -573,6 +575,7 @@ class TcpServer( object ):
         # case A_0.1, increment the problem size, include tranmission complete message
         if clientCliqueSize == 0:
             self.recordAnswer()
+            self.sendAnswerWithEmail()
             print self.currentSize
             print self.currentGraph
             self.currentSize += 1
@@ -602,6 +605,29 @@ class TcpServer( object ):
         with open( newAnswerFileName, "w+" ) as myfile:
             myfile.write( size + '\n' )
             myfile.write( graph + '\n\n\n' )
+
+    def sendAnswerWithEmail( self ):
+        print 'start sending with email'
+        msg = MIMEMultipart()
+        msg['From'] = 'beokro@gmail.com'
+        msg['To'] = 'xujiacao@gmail.com'
+        msg['Subject'] = 'new answer found'
+        message = str( self.currentSize ) + '\n' + self.currentGraph
+        msg.attach(MIMEText(message))
+
+        mailserver = smtplib.SMTP('smtp.gmail.com',587)
+        # identify ourselves to smtp gmail client
+        mailserver.ehlo()
+        # secure our email with tls encryption
+        mailserver.starttls()
+        # re-identify ourselves as an encrypted connection
+        mailserver.ehlo()
+        mailserver.login('beokro@gmail.com', 'q503748283')
+
+        mailserver.sendmail('beokro@gmail.com','xujiacao@gmail.com',msg.as_string())
+
+        mailserver.quit()
+        print 'done with sending email'
 
     def denyNewGraph( self, client, tie, clientID ):
         # deny the matrix, not need to send if it is worse than current one
