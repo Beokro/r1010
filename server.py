@@ -34,6 +34,48 @@ newAnswerFileName = 'newAnswer'
 backupSyncTime = 5
 answerSaveTime = 600
 
+def packBitMap( graph ):
+    print 'compressed'
+    index = 0
+    bitIndex = 0
+    length = len( graph ) - 7
+    newList = []
+    current = 128
+    mask = 64
+    while index < length:
+        for x in range( 0, 7 ):
+            if graph[ index + x ] == '1':
+                current = current | mask
+            mask = mask >> 1
+        newList.append( chr( current ) )
+        current = 128
+        index += 7
+        mask = 64
+    remain = length + 7 - index
+    for x in range( 0, remain ):
+        if graph[ index + x ] == '1':
+            current = current | mask
+        mask = mask >> 1
+    newList.append( chr( current ) )
+
+    print 'compress done'
+    return ''.join( newList )
+
+def UnpackBitMap( graph, length ):
+    temp = 0
+    myList = []
+    for x in graph:
+        temp = ord( x )
+        mask = 64
+        while mask != 0:
+            # print mask
+            if temp & mask != 0:
+                myList.append( '1' )
+            else:
+                myList.append( '0' )
+            mask = mask >> 1
+    ans = ''.join( myList )
+    return ans[ :length ]
 
 class TcpServer( object ):
     def __init__( self, host, port, destHost, destPort, timeout, logDir, backup, currentSize, readFromTemp ):
@@ -675,6 +717,12 @@ class TcpServer( object ):
     def sendPacket( self, client, datas ):
         message = ''
         for data in datas:
+            '''
+            if len( data ) < 1000:
+                message += str( data ) + '\n'
+            else:
+                message += packBitMap( data ) + '\n'
+            '''
             message += str( data ) + '\n'
         client.send( message )
 
