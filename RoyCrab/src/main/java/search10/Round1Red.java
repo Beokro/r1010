@@ -5,7 +5,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.Map;
 
 public class Round1Red extends Thread {
-    
+
     public static ConcurrentMap<Integer, BlockingQueue<Integer>> input;
     public static BlockingQueue<OneNeighbor> result;
     public static Object lock = new Object();
@@ -17,6 +17,7 @@ public class Round1Red extends Thread {
     }
 
     public void run() {
+
         while(!input.isEmpty()) {
             Map.Entry<Integer, BlockingQueue<Integer>> entry = null;
 

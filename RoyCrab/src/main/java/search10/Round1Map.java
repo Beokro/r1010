@@ -35,7 +35,6 @@ public class Round1Map extends Thread {
             result.putIfAbsent(node2, new LinkedBlockingQueue<Integer>());
             result.get(node1).add(node2);
             result.get(node2).add(node1);
-            
         }
     }
 }
