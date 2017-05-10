@@ -134,14 +134,15 @@ class TcpServer( object ):
         possibleIndex = ( target - 25 - 1 ) * 4
         if self.readFromTemp:
             return self.getTempGraph()
-        elif target < 25 or target - 1 > self.lastResult or possibleIndex >= len( content ) or\
-           int( content[ possibleIndex ] ) != target - 1:
+        elif self.lastResult != target - 1:
             print 'random generate targe = ' + str( target )
+            print 'do not start client until generation is done'
             return self.defaultGraph( True )
         else:
-            self.currentGraph = content[ possibleIndex + 1 ]
+            self.currentGraph = content[ 1 ]
             print 'use answer, generate graph for ' + str( self.currentSize )
-            return self.defaultGraph()
+            print 'do not start client until generation is done'
+            return self.defaultGraph( useLastGraphAsBase = True )
 
     def createNewAnswer( self ):
         global answerFileName
@@ -181,6 +182,7 @@ class TcpServer( object ):
             while index < num:
                 res.append( str( randint( 0, 1 ) ) )
                 index += 1
+            print 'generation complete'
             return ''.join( res )
         else:
             res = ''
@@ -194,6 +196,7 @@ class TcpServer( object ):
             while index < self.currentSize:
                 res += str( randint( 0, 1 ) )
                 index += 1
+            print 'generation complete'
             return res
 
     def listen( self ):
