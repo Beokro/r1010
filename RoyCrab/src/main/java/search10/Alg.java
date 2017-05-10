@@ -260,7 +260,7 @@ public class Alg {
         Round1Map.save = new ConcurrentHashMap<Integer, Edge>();
         runRound(2, cores); 
         runRound(3, cores); 
-        runRound(4, cores); 
+        runRound(4, cores);
         runRound(5, cores); 
         long cliques = 0;
         for(long i : Round5Red.result.values()) {
@@ -285,23 +285,26 @@ public class Alg {
 
         while(cliques != 0) {
 
-            long best = Long.MAX_VALUE;
+            long best = cliques;
             int times = rand.nextInt(loopTimes) + 1;
-            int bestChange = 0;
-            for(int i = 0; i < times; i++) {
+            int bestChange = -1;
+            for(int i = 0; i < times || bestChange != -1; i++) {
                 current = getRandomNeighbor();
                 if(current < best) {
                     best = current;
                     bestChange = this.change;
                 }
-                
-                Edge temp = graph.get(bestChange);
-                if(temp.node1 >= currentSize) {
-                    temp = flip(temp);
+                if(bestChange == -1) {
+                    client.updateFromAlg(currentSize, best, graph2d);
+                } else {
+                    Edge temp = graph.get(bestChange);
+                    if(temp.node1 >= currentSize) {
+                        temp = flip(temp);
+                    }
+                    graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
+                    client.updateFromAlg(currentSize, best, graph2d);
+                    graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
                 }
-                graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
-                client.updateFromAlg(currentSize, best, graph2d);
-                graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
                 
                 if(currentSize < client.getCurrentSize() ||
                     best * 9 / 10 > client.getCliqueSize()) {
@@ -342,7 +345,7 @@ public class Alg {
         if(args.length < 2) {
             System.out.println("Usage: java -jar <jar file> "
                     + "<server ip> <bloomfilter ip>");
-            //return;
+            return;
         }
         String serverIp = args[0];
         String bloomFilterIp = args[1];

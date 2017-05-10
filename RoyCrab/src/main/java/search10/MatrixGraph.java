@@ -4,22 +4,14 @@ public class MatrixGraph{
     int[][] graph;
     int size;
     MatrixGraph(int size) {
-        this.size = size;
-        graph = new int[size][];
-        for(int i = 0; i < size; i++) {
-            graph[i] = new int[size];
+        this.size = size * 2;
+        graph = new int[this.size][];
+        for(int i = 0; i < this.size; i++) {
+            graph[i] = new int[this.size];
         }
-    }
-
-    private int get(int num) {
-        return graph[num / size][num % size];
     }
 
     public void addEdge(int node1, int node2) {
-        if(node1 >= size) {
-            node1 -= size;
-            node2 -= size;
-        }
         if(node1 < node2) {
             graph[node1][node2] = 1;
         } else {
