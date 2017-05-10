@@ -77,7 +77,7 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
     RemoteBloomFilterImpl() throws RemoteException{
         
         CAP = 40000000L;
-        fpp = 0.000000001;
+        fpp = 0.0000000001;
         graphFunnel = new Funnel<int[][]>() {
             @Override
             public void funnel(int[][] graph2d, PrimitiveSink into) {
@@ -138,14 +138,12 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
 
     @Override
     public int getCurrentSize() throws RemoteException{
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
-        log.info(timeStamp + " Get current size");
         return currentSize;
     }
 
     @Override
     public synchronized void addHistory(int[][] toAdd) throws RemoteException {
-        if((elements % (CAP / 100) == 0 && elements != 0) || elements >= CAP) {
+        if((elements % (CAP / 10000) == 0 && elements != 0) || elements >= CAP) {
             try {
                 if(backupThread != null) {
                     backupThread.join();
@@ -173,8 +171,7 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
         if(result) {
             elements += 1;
         }
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
-        log.info(timeStamp + " History added");
+        log.info("Elements: " + elements);
     }
 
     @Override
@@ -182,16 +179,12 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
         if(backup == null) {
             return bloomFilter.mightContain(graph2d);
         }
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
-        log.info(timeStamp + " check in history");
         return backup.mightContain(graph2d) || bloomFilter.mightContain(graph2d);
     }
 
     @Override
     public synchronized void setCurrentSize(int currentSize) throws RemoteException {
         this.currentSize = currentSize;
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
-        log.info(timeStamp + " Set current size");
     }
 
     public static void main(String[] args) {

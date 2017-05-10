@@ -25,11 +25,11 @@ public class Round5Red extends Thread {
                 entry = input.entrySet().iterator().next();
                 input.remove(entry.getKey());
             }
-            AdjListGraph g = new AdjListGraph();
+            MatrixGraph g = new MatrixGraph(Alg.client.getCurrentSize());
             for(Edge edge : entry.getValue()) {
-                g.addEdge(Integer.toString(edge.node1), Integer.toString(edge.node2));
+                g.addEdge(edge.node1, edge.node2);
             }
-            long cliques = g.countCliquesOfSize(9);
+            long cliques = g.count9Cliques();
             result.put(entry.getKey(), cliques);
         }
     }

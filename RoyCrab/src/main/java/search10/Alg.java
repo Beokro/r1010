@@ -104,8 +104,8 @@ public class Alg {
     static RemoteBloomFilter history;
     static int t0;
     static int t1;
-    static int interval;
     static int step;
+    static int loopTimes;
 
     Alg(String serverIp, String bloomFilterIp) {
         graph = new ArrayList<Edge>();
@@ -175,6 +175,7 @@ public class Alg {
         graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
         return result;
     }
+    
     private long getRandomNeighbor() {
         Random rand = new Random(System.currentTimeMillis());             
         int change = rand.nextInt(graph.size());
@@ -217,7 +218,7 @@ public class Alg {
     private void runRound(int round, int cores) {
         List<Thread> mappers = new ArrayList<Thread>();
         List<Thread> reducers = new ArrayList<Thread>();
-        int workers = 2*cores;
+        int workers = cores;
         for(int i = 0; i < workers; i++) {
             MapRed thisRound = RoundFactory.makeRound(round);
             mappers.add(0, thisRound.map);
@@ -281,30 +282,41 @@ public class Alg {
         long current = Long.MAX_VALUE;                                      
         currentSize = client.getCurrentSize();
         Random rand = new Random(System.currentTimeMillis());
-        int count = 0;
 
         while(cliques != 0) {
 
-            if(count >= interval) {
-                client.updateFromAlg(currentSize, cliques, graph2d);
+            long best = Long.MAX_VALUE;
+            int times = rand.nextInt(loopTimes) + 1;
+            int bestChange = 0;
+            for(int i = 0; i < times; i++) {
+                current = getRandomNeighbor();
+                if(current < best) {
+                    best = current;
+                    bestChange = this.change;
+                }
+                
+                Edge temp = graph.get(bestChange);
+                if(temp.node1 >= currentSize) {
+                    temp = flip(temp);
+                }
+                graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
+                client.updateFromAlg(currentSize, best, graph2d);
+                graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
+                
                 if(currentSize < client.getCurrentSize() ||
-                        cliques >= client.getCliqueSize()) {
+                    best * 9 / 10 > client.getCliqueSize()) {
                     return;
-                } else {
-                    count = 0;
                 }
             }
-            current = getRandomNeighbor();
+            current = best;
+            this.change = bestChange;
             if(current < cliques) { 
                 accept();
-                if(current <= cliques / 5 * 4 ) {
-                    client.updateFromAlg(currentSize, current, graph2d);
-                    if(currentSize < client.getCurrentSize() ||
-                            current > client.getCliqueSize()) {
-                        return;
-                            }
+                cliques = current;
+                if(cliques == 0) {
+                    client.updateFromAlg(currentSize, cliques, graph2d);
+                    return;
                 }
-                cliques = current;                                            
             } else {                                                          
                 double prob =                                                 
                     Math.pow(Math.E, ((double)(cliques - current))/((double)t1));
@@ -312,19 +324,17 @@ public class Alg {
                     accept();
                     cliques = current;
                 }                                                             
-                t1 -= step;
-                if(t1 < t0) {
-                    t1 = t0;
-                }
             }
-            count += 1;
+            t1 -= step;
+            if(t1 < t0) {
+                return;
+            }
         }
-        client.updateFromAlg(currentSize, cliques, graph2d);
     }
     public static void setupParams() {
         t0 = 5;
         t1 = client.getCurrentSize();
-        interval = t1;
+        loopTimes = t1;
         step = 1;
     }
     public static void main( String[] args ) {
@@ -332,11 +342,10 @@ public class Alg {
         if(args.length < 2) {
             System.out.println("Usage: java -jar <jar file> "
                     + "<server ip> <bloomfilter ip>");
-            return;
+            //return;
         }
         String serverIp = args[0];
         String bloomFilterIp = args[1];
-
         Alg excalibur = null;
 
         Alg.client = new TcpClient(serverIp, 7788);
@@ -359,7 +368,6 @@ public class Alg {
             excalibur.start();
             try {
                 if(history.getCurrentSize() < client.getCurrentSize()) {
-                    setupParams();
                     history.refresh(client.getCurrentSize());
                 }
             } catch(RemoteException e) {
