@@ -536,20 +536,22 @@ class TcpServer( object ):
                                    self.currentGraph ] )
         self.lock.release()
         while True:
-            try:
-                data = self.recvPacket( client, 20 )[ 0 ]
-                if data:
-                    self.doLogging( 'data exchange start', clientID )
-                    self.handleClique( data, client, clientID )
-                else:
-                    self.doLogging(  'client disconnected', clientID, 'warning' )
-                    raise Exception( 'Client disconnected' )
+            # try:
+            data = self.recvPacket( client, 20 )[ 0 ]
+            if data:
+                self.doLogging( 'data exchange start', clientID )
+                self.handleClique( data, client, clientID )
+            else:
+                self.doLogging(  'client disconnected', clientID, 'warning' )
+                raise Exception( 'Client disconnected' )
+            '''
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split( exc_tb.tb_frame.f_code.co_filename ) [ 1 ]
                 print ( exc_type, fname, exc_tb.tb_lineno )
                 client.close()
                 return
+            '''
 
 
     def handleClique( self, data, client, clientID ):
