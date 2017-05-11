@@ -307,8 +307,8 @@ public class Alg {
                 }
                 long diff = best - client.getCliqueSize();
                 if(currentSize < client.getCurrentSize() ||
-                    diff > Math.min(best / 1000, 100) || diff > Math.max(best / 1000, 1) ){
-                    //best - client.getCliqueSize() > 50 || (best < 1000 || best - client.getCliqueSize() > 4)) {
+                        ((best / 1000 >= 5 && diff > Math.min(100, best / 1000) ) || 
+                                             (best / 1000 < 5 && diff > 5))) {
                     return;
                 }
             }
