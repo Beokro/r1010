@@ -307,7 +307,7 @@ public class Alg {
                 }
                 
                 if(currentSize < client.getCurrentSize() ||
-                    best - client.getCliqueSize() > currentSize) {
+                    best - client.getCliqueSize() > 50 || (best < 1000 || best - client.getCliqueSize() > 4)) {
                     return;
                 }
             }
