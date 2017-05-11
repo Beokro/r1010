@@ -278,7 +278,7 @@ public class Alg {
         graph2d = client.getGraph();
         graph = new ArrayList<Edge>();
         createGraph();
-        long cliques = countCliques();
+        long cliques = client.getCliqueSize();
         long current = Long.MAX_VALUE;                                      
         currentSize = client.getCurrentSize();
         Random rand = new Random(System.currentTimeMillis());
