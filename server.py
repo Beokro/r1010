@@ -77,6 +77,13 @@ def UnpackBitMap( graph, length ):
     ans = ''.join( myList )
     return ans[ :length ]
 
+def generateRandomNumber( n ):
+    tempList = []
+    for _ in range( 0, n ):
+        tempList.append( str( randint( 0, 1 ) ) )
+    return ''.join( tempList )
+
+
 class TcpServer( object ):
     def __init__( self, host, port, destHost, destPort, timeout, logDir, backup, currentSize, readFromTemp ):
         self.host = host
@@ -122,22 +129,17 @@ class TcpServer( object ):
         self.lastResult = int( content[ listSize - 4 ] )
         self.lastGraph = content[ listSize - 3 ]
 
-        if self.currentSize != -1:
-            target = self.currentSize
-            self.lastResult = self.currentSize - 1
-            self.lastGraph = '0' * self.lastResult * self.lastResult
-        else:
-            self.currentSize = target = self.lastResult + 1
-            self.lastResult = int( content[ listSize - 4 ] )
-            self.lastGraph = content[ listSize - 3 ]
-
-        possibleIndex = ( target - 25 - 1 ) * 4
         if self.readFromTemp:
             return self.getTempGraph()
-        elif self.lastResult != target - 1:
+        if self.currentSize != -1:
+            target = self.currentSize
+        else:
+            self.currentSize = target = self.lastResult + 1
+
+        if self.lastResult > target - 1:
             print 'random generate targe = ' + str( target )
             print 'do not start client until generation is done'
-            return self.defaultGraph( True )
+            return self.defaultGraph( rand = True )
         else:
             self.currentGraph = content[ 1 ]
             print 'use answer, generate graph for ' + str( self.currentSize )
@@ -158,9 +160,11 @@ class TcpServer( object ):
             myfile.write( lastResult + '\n' )
             myfile.write( lastGraph + '\n\n\n' )
 
-    def getTempGraph():
+    def getTempGraph( self ):
         with open ( tempFileName ) as f:
             content = f.readlines()
+        self.currentSize = int( content[ 0 ] )
+        print 'current size is ' + str( self.currentSize )
         return content[ 1 ]
 
     def updateLastResult( self, client, startUp = False ):
@@ -187,15 +191,16 @@ class TcpServer( object ):
         else:
             res = ''
             index = 0
+            appendNum = self.currentSize - self.lastResult
+            print 'start wrap'
             if useLastGraphAsBase:
-                glists = textwrap.wrap( self.lastGraph ,  self.currentSize - 1 )
+                glists = textwrap.wrap( self.lastGraph ,  self.lastResult )
             else:
                 glists = textwrap.wrap( self.currentGraph ,  self.currentSize - 1 )
+            print 'end wrap'
             for g in glists:
-                res += g + str( randint( 0, 1 ) )
-            while index < self.currentSize:
-                res += str( randint( 0, 1 ) )
-                index += 1
+                res += g + generateRandomNumber( appendNum )
+            res += generateRandomNumber( self.currentSize )
             print 'generation complete'
             return res
 
@@ -531,20 +536,22 @@ class TcpServer( object ):
                                    self.currentGraph ] )
         self.lock.release()
         while True:
-            try:
-                data = self.recvPacket( client, 20 )[ 0 ]
-                if data:
-                    self.doLogging( 'data exchange start', clientID )
-                    self.handleClique( data, client, clientID )
-                else:
-                    self.doLogging(  'client disconnected', clientID, 'warning' )
-                    raise Exception( 'Client disconnected' )
+            # try:
+            data = self.recvPacket( client, 20 )[ 0 ]
+            if data:
+                self.doLogging( 'data exchange start', clientID )
+                self.handleClique( data, client, clientID )
+            else:
+                self.doLogging(  'client disconnected', clientID, 'warning' )
+                raise Exception( 'Client disconnected' )
+            '''
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split( exc_tb.tb_frame.f_code.co_filename ) [ 1 ]
                 print ( exc_type, fname, exc_tb.tb_lineno )
                 client.close()
                 return
+            '''
 
 
     def handleClique( self, data, client, clientID ):
@@ -809,8 +816,7 @@ if __name__ == "__main__":
 
     if backup and logDir == 'server.log':
         logDir = 'backup.log'
-    if readFromTemp:
-        currentSize = -1
+
     try:
         temp = TcpServer( '', port, destIP, destPort, timeout, logDir, backup, currentSize, readFromTemp )
         temp.listen()
