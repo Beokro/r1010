@@ -307,7 +307,7 @@ public class Alg {
                 }
                 
                 if(currentSize < client.getCurrentSize() ||
-                    best * 9 / 10 > client.getCliqueSize()) {
+                    best - client.getCliqueSize() > currentSize) {
                     return;
                 }
             }
