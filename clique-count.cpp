@@ -144,18 +144,22 @@ void convertStringToArray( string& line, int size, int* graph ) {
 int main() {
   int size;
   string line;
-  ifstream myfile ( "tempFile" );
+  ifstream myfile ( "answer" );
   int * graph;
   if ( myfile.is_open() )
     {
       while( getline(myfile,line) ) {
+        cout << "line = " << line << endl;
         size = stoi( line );
         graph = new int[ size * size ];
         getline(myfile,line);
         convertStringToArray( line, size, graph );
-        cout << CliqueCount( graph, size ) << endl;
+        int n = CliqueCount( graph, size );
+        cout <<"size = " << size <<" cliquecount = " << n << endl;
         getline(myfile,line);
+        cout << line;
         getline(myfile,line);
+        cout << line;
         delete[] graph;
       }
       myfile.close();

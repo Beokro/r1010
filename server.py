@@ -94,7 +94,7 @@ class TcpServer( object ):
         self.logDir = logDir
         self.backup = backup
         self.readFromTemp = readFromTemp
-        self.firstCandidateAddr = ' '
+        self.firstCandidateAddr = '127.0.0.1'
         self.firstCandidatePort = -1
         self.myAddr = ' '
         self.myPort = -1
@@ -131,6 +131,8 @@ class TcpServer( object ):
 
         if self.readFromTemp:
             return self.getTempGraph()
+
+        # server knows the currentSize
         if self.currentSize != -1:
             target = self.currentSize
         else:
@@ -165,7 +167,7 @@ class TcpServer( object ):
             content = f.readlines()
         self.currentSize = int( content[ 0 ] )
         print 'current size is ' + str( self.currentSize )
-        return content[ 1 ]
+        return content[ 1 ].rstrip('\n')
 
     def updateLastResult( self, client, startUp = False ):
         if startUp:
@@ -536,22 +538,20 @@ class TcpServer( object ):
                                    self.currentGraph ] )
         self.lock.release()
         while True:
-            # try:
-            data = self.recvPacket( client, 20 )[ 0 ]
-            if data:
-                self.doLogging( 'data exchange start', clientID )
-                self.handleClique( data, client, clientID )
-            else:
-                self.doLogging(  'client disconnected', clientID, 'warning' )
-                raise Exception( 'Client disconnected' )
-            '''
+            try:
+                data = self.recvPacket( client, 20 )[ 0 ]
+                if data:
+                    self.doLogging( 'data exchange start', clientID )
+                    self.handleClique( data, client, clientID )
+                else:
+                    self.doLogging(  'client disconnected', clientID, 'warning' )
+                    raise Exception( 'Client disconnected' )
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split( exc_tb.tb_frame.f_code.co_filename ) [ 1 ]
                 print ( exc_type, fname, exc_tb.tb_lineno )
                 client.close()
                 return
-            '''
 
 
     def handleClique( self, data, client, clientID ):
@@ -727,12 +727,6 @@ class TcpServer( object ):
     def sendPacket( self, client, datas ):
         message = ''
         for data in datas:
-            '''
-            if len( data ) < 1000:
-                message += str( data ) + '\n'
-            else:
-                message += packBitMap( data ) + '\n'
-            '''
             message += str( data ) + '\n'
         client.send( message )
 
