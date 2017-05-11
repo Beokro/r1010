@@ -232,12 +232,13 @@ class TcpServer( object ):
     def saveTempAnswer( self ):
         global answerSaveTime
         global tempFileName
-        with open( tempFileName, "w+" ) as myfile:
-            self.lock.acquire()
-            myfile.write( str( self.currentSize ) + '\n' )
-            myfile.write( self.currentGraph + '\n\n\n' )
-            self.lock.release()
-        time.sleep( answerSaveTime )
+        while True:
+            with open( tempFileName, "w+" ) as myfile:
+                self.lock.acquire()
+                myfile.write( str( self.currentSize ) + '\n' )
+                myfile.write( self.currentGraph + '\n\n\n' )
+                self.lock.release()
+            time.sleep( answerSaveTime )
 
 
     # ********************************************************
