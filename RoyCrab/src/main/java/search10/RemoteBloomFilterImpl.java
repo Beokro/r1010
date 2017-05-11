@@ -143,7 +143,7 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
 
     @Override
     public synchronized void addHistory(int[][] toAdd) throws RemoteException {
-        if((elements % (CAP / 10000) == 0 && elements != 0) || elements >= CAP) {
+        if((elements % (CAP / 100000) == 0 && elements != 0) || elements >= CAP) {
             try {
                 if(backupThread != null) {
                     backupThread.join();

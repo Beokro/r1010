@@ -290,6 +290,7 @@ public class Alg {
             int bestChange = -1;
             for(int i = 0; i < times || bestChange != -1; i++) {
                 current = getRandomNeighbor();
+                
                 if(current < best) {
                     best = current;
                     bestChange = this.change;
