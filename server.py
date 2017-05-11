@@ -235,6 +235,7 @@ class TcpServer( object ):
         while True:
             with open( tempFileName, "w+" ) as myfile:
                 self.lock.acquire()
+                self.doLogging( 'saving temp answer to the file, current clique = ' + str( self.cliqueSize ), ' ', isServer = True )
                 myfile.write( str( self.currentSize ) + '\n' )
                 myfile.write( self.currentGraph + '\n\n\n' )
                 self.lock.release()
@@ -768,10 +769,10 @@ def usage():
 
 if __name__ == "__main__":
     try:
-        opts, args = getopt.getopt( sys.argv[ 1: ], "p:ht:l:a:d:bc:r",
+        opts, args = getopt.getopt( sys.argv[ 1: ], "p:ht:l:a:d:bc:n",
                                     [ "port=", "help", "timeout=", "log=",
                                       "addrdest=", "destport", "backup",
-                                      "currentSize=", "readFromTemp" ] )
+                                      "currentSize=", "notreadFromTemp" ] )
     except getopt.GetoptError as err:
         print str( err )
         usage()
@@ -784,7 +785,7 @@ if __name__ == "__main__":
     destPort = 7788
     backup = False
     currentSize = -1
-    readFromTemp = False
+    readFromTemp = True
 
     for o, a in opts:
         if o in ( "-h", "--help" ):
@@ -804,8 +805,8 @@ if __name__ == "__main__":
             backup = True
         elif o in ( "-c", "--currentSize" ):
             currentSize = int( a )
-        elif o in ( "-r", "--readFromTemp" ):
-            readFromTemp = True
+        elif o in ( "-n", "--notreadFromTemp" ):
+            readFromTemp = False
         else:
             assert False, "unhandled option"
 
