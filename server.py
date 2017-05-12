@@ -103,7 +103,10 @@ class TcpServer( object ):
         self.lastResult = -1
         self.lastGraph = ' '
         self.currentSize = currentSize
-        self.currentGraph = self.generateGraph()
+        if self.backup:
+            self.currentGraph = ' '
+        else:
+            self.currentGraph = self.generateGraph()
         self.cliqueSize = sys.maxsize
         self.counter = 0
         self.lockID = -1
