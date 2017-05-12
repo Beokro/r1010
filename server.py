@@ -31,8 +31,8 @@ lastAnswerRequest = 'lastAnsReq'
 tempFileName = 'tempFile'
 answerFileName = 'answer'
 newAnswerFileName = 'newAnswer'
-backupSyncTime = 30
-answerSaveTime = 60
+backupSyncTime = 300
+answerSaveTime = 600
 
 def packBitMap( graph ):
     print 'compressed'
