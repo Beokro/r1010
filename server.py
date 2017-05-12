@@ -236,6 +236,8 @@ class TcpServer( object ):
     def saveTempAnswer( self ):
         global answerSaveTime
         global tempFileName
+        if self.backup:
+            time.sleep( answerSaveTime )
         while True:
             try:
                 self.getLock( '-2' )
