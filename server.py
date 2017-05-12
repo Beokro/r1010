@@ -31,8 +31,8 @@ lastAnswerRequest = 'lastAnsReq'
 tempFileName = 'tempFile'
 answerFileName = 'answer'
 newAnswerFileName = 'newAnswer'
-backupSyncTime = 300
-answerSaveTime = 600
+backupSyncTime = 30
+answerSaveTime = 60
 
 def packBitMap( graph ):
     print 'compressed'
@@ -302,7 +302,7 @@ class TcpServer( object ):
 
         self.currentSize = int( data[ 0 ] )
         self.cliqueSize = int( data[ 1 ] )
-        self.graph = data[ 2 ]
+        self.currentGraph = data[ 2 ]
         self.recordAnswer( data[ 3 ], data[ 4 ] )
 
         self.releaseLock()
