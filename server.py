@@ -106,6 +106,7 @@ class TcpServer( object ):
         self.currentGraph = self.generateGraph()
         self.cliqueSize = sys.maxsize
         self.counter = 0
+        self.lockID = -1
         self.sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
         self.sock.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
         self.sock.bind( ( self.host, self.port ) )
@@ -233,13 +234,17 @@ class TcpServer( object ):
         global answerSaveTime
         global tempFileName
         while True:
-            with open( tempFileName, "w+" ) as myfile:
-                self.lock.acquire()
-                self.doLogging( 'saving temp answer to the file, current clique = ' + str( self.cliqueSize ), ' ', isServer = True )
-                myfile.write( str( self.currentSize ) + '\n' )
-                myfile.write( self.currentGraph + '\n\n\n' )
-                self.lock.release()
-            time.sleep( answerSaveTime )
+            try:
+                self.getLock( '-2' )
+                with open( tempFileName, "w+" ) as myfile:
+                    self.doLogging( 'saving temp answer to the file, current clique = ' + str( self.cliqueSize ), ' ', isServer = True )
+                    myfile.write( str( self.currentSize ) + '\n' )
+                    myfile.write( self.currentGraph + '\n\n\n' )
+                self.releaseLock()
+                time.sleep( answerSaveTime )
+            except:
+                if self.lockID == '-2':
+                    self.releaseLock()
 
 
     # ********************************************************
@@ -290,14 +295,14 @@ class TcpServer( object ):
         '''
         self.sendPacket( backupSock, [ syncRequestMessage ] )
         data = self.recvPacket( backupSock, 60 + 850 * 850 * 2 )
-        self.lock.acquire()
+        self.getLock( '-3' )
 
         self.currentSize = int( data[ 0 ] )
         self.cliqueSize = int( data[ 1 ] )
         self.graph = data[ 2 ]
         self.recordAnswer( data[ 3 ], data[ 4 ] )
 
-        self.lock.release()
+        self.releaseLock()
         self.sendPacket( backupSock, [ syncCompleteMessage ] )
         self.doLogging( 'After inital sync, currentSize = ' + str( self.currentSize ) +\
                         ' cliqueSize =' + str( self.cliqueSize ),
@@ -328,7 +333,7 @@ class TcpServer( object ):
 
             self.sendPacket( backupSock, [ syncRequestMessage ] )
             data = self.recvPacket( backupSock, 80 )
-            self.lock.acquire()
+            self.getLock( '-3' )
 
             currentSize = int( data[ 0 ] )
             cliqueSize = int( data[ 1 ] )
@@ -353,13 +358,14 @@ class TcpServer( object ):
                             ' cliqueSize =' + str( self.cliqueSize ),
                             ' ', isServer = True )
 
-            self.lock.release()
+            self.releaseLock()
             self.doLogging( 'periodic sync complete', ' ', isServer = True )
 
     def handleMainServerDown( self ):
         try:
             # try to reconnect to server
-            self.lock.release()
+            if self.lockID == '-3':
+                self.releaseLock()
             self.contactMainServer()
         except:
             # reconnect to first candidate server this backup is not first candidate
@@ -390,7 +396,7 @@ class TcpServer( object ):
         print 'here'
         self.doLogging( 'new connection establish', clientID )
         # send my currentSize and graph to the clinet to start the computation
-        self.lock.acquire()
+        self.getLock( clientID )
         data = self.recvPacket( client, 50 )
         if data[ 0 ] == clientClaimMessage:
             print 'it is a client'
@@ -414,7 +420,7 @@ class TcpServer( object ):
         global firstBackup
         global normalBackup
         self.doLogging( ' is a server', clientID )
-        self.lock.release()
+        self.releaseLock()
         '''
             Server -> address of first candidate
             Server -> port of first candidate
@@ -442,9 +448,9 @@ class TcpServer( object ):
             self.handleUnexpectMessage( client, syncRequestMessage, data, clientID, True )
             return
 
-        self.lock.acquire()
+        self.getLock( clientID )
         self.updateLastResult( client, startUp = True )
-        self.lock.release()
+        self.releaseLock()
 
         data = self.recvPacket( client, 20 )[ 0 ]
         if data != syncCompleteMessage:
@@ -462,6 +468,8 @@ class TcpServer( object ):
                     # to do, handle backup server disconnect
                     raise error( 'backup server disconnected' )
             except Exception as e:
+                if self.lockID == clientID:
+                    self.releaseLock()
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split( exc_tb.tb_frame.f_code.co_filename ) [ 1 ]
                 print ( exc_type, fname, exc_tb.tb_lineno )
@@ -483,12 +491,12 @@ class TcpServer( object ):
         if data != syncRequestMessage:
             self.handleUnexpectMessage( client, syncRequestMessage, data, clientID, True )
             return
-        self.lock.acquire()
+        self.getLock( clientID )
         self.sendPacket( client, [ str( self.currentSize ),
                                    str( self.cliqueSize ),
                                    self.firstCandidateAddr,
                                    str( self.firstCandidatePort ) ] )
-        self.lock.release()
+        self.releaseLock()
         data = self.recvPacket( client, 20 )[ 0 ]
 
         '''
@@ -497,9 +505,9 @@ class TcpServer( object ):
             Backup -> sync complete
         '''
         if data == requestMessage:
-            self.lock.acquire()
+            self.getLock( clientID )
             self.sendPacket( client, [ self.currentGraph ] )
-            self.lock.release()
+            self.releaseLock()
             data = self.recvPacket( client, 20 )[ 0 ]
 
         '''
@@ -509,9 +517,9 @@ class TcpServer( object ):
             Backup -> sync complete
         '''
         if data == lastAnswerRequest:
-            self.lock.acquire()
+            self.getLock( clientID )
             self.updateLastResult( client )
-            self.lock.release()
+            self.releaseLock()
             data = self.recvPacket( client, 20 )[ 0 ]
 
         if data != syncCompleteMessage:
@@ -538,7 +546,7 @@ class TcpServer( object ):
                                    str( self.currentSize ),
                                    str( self.cliqueSize ),
                                    self.currentGraph ] )
-        self.lock.release()
+        self.releaseLock()
         while True:
             try:
                 data = self.recvPacket( client, 20 )[ 0 ]
@@ -549,6 +557,8 @@ class TcpServer( object ):
                     self.doLogging(  'client disconnected', clientID, 'warning' )
                     raise Exception( 'Client disconnected' )
             except Exception as e:
+                if self.lockID == clientID:
+                    self.releaseLock()
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split( exc_tb.tb_frame.f_code.co_filename ) [ 1 ]
                 print ( exc_type, fname, exc_tb.tb_lineno )
@@ -580,7 +590,7 @@ class TcpServer( object ):
         self.doLogging( 'client has problem size: ' + str( clientProblemSize ) +\
                         ' clique: ' + str( clientCliqueSize ), clientID )
 
-        self.lock.acquire()
+        self.getLock( clientID )
 
         # case B
         if clientProblemSize != self.currentSize:
@@ -594,7 +604,7 @@ class TcpServer( object ):
         # case A_3
         else:
             self.denyNewGraph( client, True, clientID )
-        self.lock.release()
+        self.releaseLock()
 
     def handleUnexpectMessage( self, client, expecting, received, clientID, isServer = False ):
         global restartMessage
@@ -762,6 +772,13 @@ class TcpServer( object ):
         else:
             logging.warning( otherSide + clientID + ': ' + message )
 
+    def getLock( self, ID ):
+        self.lock.acquire()
+        self.lockID = ID
+
+    def releaseLock( self ):
+        self.lockID = -1
+        self.lock.release()
 
 def usage():
     print 'python server.py [-h] [-p portnumber] [-t timeout] [-l logDir] [-a destAddr] [-d destPort] [-b] [-r]'
