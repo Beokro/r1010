@@ -31,7 +31,7 @@ lastAnswerRequest = 'lastAnsReq'
 tempFileName = 'tempFile'
 answerFileName = 'answer'
 newAnswerFileName = 'newAnswer'
-backupSyncTime = 5
+backupSyncTime = 300
 answerSaveTime = 600
 
 def packBitMap( graph ):
