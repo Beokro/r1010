@@ -106,6 +106,9 @@ public class Alg {
     static int t1;
     static int step;
     static int loopTimes;
+    static long lowerRestart;
+    static long upperRestart;
+    static long divFactor;
 
     Alg(String serverIp, String bloomFilterIp) {
         graph = new ArrayList<Edge>();
@@ -272,7 +275,15 @@ public class Alg {
         }
         return cliques;
     }
-
+    
+    boolean useClient(int currentSize, int cliques) {
+        long diff = cliques - client.getCliqueSize();
+        return (currentSize < client.getCurrentSize() ||
+                (cliques / divFactor >= lowerRestart && 
+                diff > Math.min(upperRestart, cliques / divFactor) ) || 
+                (cliques / divFactor < lowerRestart && diff > lowerRestart));
+    }
+    
     public void start() {
 
         graph2d = client.getGraph();
@@ -341,6 +352,9 @@ public class Alg {
         t1 = client.getCurrentSize();
         loopTimes = t1;
         step = 1;
+        lowerRestart = 1;
+        upperRestart = 100;
+        divFactor = 2000;
     }
     public static void main( String[] args ) {
 
