@@ -276,7 +276,7 @@ public class Alg {
         return cliques;
     }
     
-    boolean useClient(int currentSize, int cliques) {
+    boolean useClient(int currentSize, long cliques) {
         long diff = cliques - client.getCliqueSize();
         return (currentSize < client.getCurrentSize() ||
                 (cliques / divFactor >= lowerRestart && 
@@ -317,10 +317,7 @@ public class Alg {
                     client.updateFromAlg(currentSize, best, graph2d);
                     graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
                 }
-                long diff = best - client.getCliqueSize();
-                if(currentSize < client.getCurrentSize() ||
-                        ((best / 2000 >= 5 && diff > Math.min(100, best / 2000) ) || 
-                                             (best / 2000 < 5 && diff > 5))) {
+                if(useClient(currentSize, best)) {
                     return;
                 }
             }
