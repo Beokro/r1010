@@ -399,6 +399,8 @@ class TcpServer( object ):
 
     def handleClient( self, client, address, clientID ):
         print 'here'
+        global serverClaimMessage
+        global clientClaimMessage
         self.doLogging( 'new connection establish', clientID )
         # send my currentSize and graph to the clinet to start the computation
         self.getLock( clientID )
@@ -406,7 +408,7 @@ class TcpServer( object ):
         if data[ 0 ] == clientClaimMessage:
             print 'it is a client'
             self.handleClientToServer( client, address, clientID )
-        else:
+        elif data[ 0 ] == serverClaimMessage:
             print 'it is a server'
             self.handleServerToServer( client, address, clientID, data[ 1 ] )
 

@@ -1,15 +1,26 @@
 #include "TcpClient.h"
 
-// todo
-// update, internal tranlate between string and vector
-// exceptions
+void TcpClient::handleReconnect() {
+  if ( !connectToHost() ) {
+    // connect to original host failed, try backup
+    destHost = backupAddr;
+    destPort = backupPort;
+    connectToHost();
+  }
+  handleStartup();
+}
 
 void TcpClient::tcpSend( vector< string > messages ) {
   string message = "";
+  int sendStatus = 0;
   for ( string m : messages ) {
     message += m + "\n";
   }
-  send( sock, message.c_str(), message.size(), 0 );
+  sendStatus = send( sock, message.c_str(), message.size(), MSG_NOSIGNAL );
+  if ( sendStatus < 0 ) {
+    throw "connection failed";
+  }
+
 }
 
 template<typename Out>
@@ -53,7 +64,7 @@ bool TcpClient::connectToHost() {
   } else {
     cerr << "scoket creat failed\n";
   }
-  return status != 0;
+  return status == 0;
 }
 
 bool TcpClient::handleStartup() {
@@ -65,11 +76,11 @@ bool TcpClient::handleStartup() {
   backupAddr = response[ 0 ];
   backupPort = stoi( response[ 1 ] );
   currentSize = stoi( response[ 2 ] );
-  cliqueSize = stoi( response[ 3 ] );
+  cliqueSize = stol( response[ 3 ] );
   currentGraph = response[ 4 ];
 
-  printf( "backup addr = %s, backup port = %d \nsize = %d, clique = %d \ngraph = %s\n",
-          backupAddr.c_str(), backupPort, currentSize, cliqueSize, currentGraph.c_str() );
+  // printf( "backup addr = %s, backup port = %d \nsize = %d, clique = %ld \ngraph = %s\n",
+  //        backupAddr.c_str(), backupPort, currentSize, cliqueSize, currentGraph.c_str() );
 }
 
 
@@ -144,22 +155,83 @@ void TcpClient::handleDeny( vector< string > response ) {
   if ( response[ 1 ] == tieMessage ) {
     cout << "server and client haave same clique" << endl;
   } else {
-    cliqueSize = stoi( response[ 1 ] );
+    cliqueSize = stol( response[ 1 ] );
     currentGraph = response[ 2 ];
-    cout << "server has better graph: " << currentGraph << endl;
+    cout << "server has better graph: " << endl;
   }
 }
 
 
 void TcpClient::handleProblemSizeChanged( vector< string > response ) {
   currentSize = stoi( response[ 1 ] );
-  cliqueSize = stoi( response[ 2 ] );
+  cliqueSize = stol( response[ 2 ] );
   currentGraph = response[ 3 ];
   cout << "problem size now changed to " << currentSize << endl;
   checkMessage( tranmissionCompleteMessage, response[ 4 ] );
 }
 
+int** TcpClient::getGraph() {
+  int ** graph = new int*[ currentSize ];
+  int index = 0;
+  for ( int i = 0; i < currentSize; i++ ) {
+    graph[ i ] = new int[ currentSize ];
+  }
+  for ( int i = 0; i < currentSize; i++ ) {
+    for ( int j = 0; j < currentSize; j++ ) {
+      graph[ i ][ j ] = currentGraph[ index ] - 48;
+      index++;
+    }
+  }
+  return graph;
+}
+
+void TcpClient::setCurrentGraph( int** graph ) {
+  string temp( currentSize * currentSize, '0' );
+  int index = 0;
+  for ( int i = 0; i < currentSize; i++ ) {
+    for ( int j = 0; j < currentSize; j++ ) {
+      if ( graph[ i ][ j ] == 1 ) {
+        temp[ index ] = '1';
+      }
+      index++;
+    }
+  }
+  currentGraph = temp;
+}
+
+void TcpClient::updateFromAlg( int problemSize, long cliqueSize, int** graph ) {
+  this->currentSize = problemSize;
+  this->cliqueSize = cliqueSize;
+  setCurrentGraph( graph );
+  try{
+    startExchange();
+  } catch( ... ) {
+    handleReconnect();
+  }
+}
+
+
+// handle reconnect, updateFromalg, string to array, array to string
+
 int main() {
   TcpClient test( "127.0.0.1", 7788 );
+  int ** graph = new int*[ 15 ];
+  int cliqueSize = 1000;
+  for ( int i = 0; i < 15; i++ ) {
+    graph[ i ] = new int[ 15 ];
+    graph[ i ][ 2 ] = 1;
+  }
   test.run();
+
+  while ( true ) {
+    test.updateFromAlg( 15, cliqueSize, graph );
+    cliqueSize -= 3;
+    sleep( 5 );
+  }
+
+
+  for ( int i = 0; i < 15; i++ ) {
+    delete[] graph[ i ];
+  }
+  delete[] graph;
 }

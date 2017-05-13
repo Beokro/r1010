@@ -9,6 +9,9 @@
 #include <sstream>
 #include <vector>
 #include <climits>
+#include <unistd.h>
+#include <stdexcept>
+
 
 
 using namespace std;
@@ -29,7 +32,7 @@ private:
   string destHost;
   int destPort;
   int currentSize = 0;
-  int cliqueSize = INT_MAX;
+  long cliqueSize = LONG_MAX;
   string currentGraph = " ";
   string backupAddr = " ";
   int backupPort = -1;
@@ -44,14 +47,16 @@ private:
   void handleRequestGraph();
   void handleDeny( vector< string > response );
   void handleProblemSizeChanged( vector< string > response );
+  void setCurrentGraph( int** graph );
+  void handleReconnect();
 
 public:
   TcpClient( string destHost, int destPort );
   void run();
   int getCurrentSize() { return currentSize; }
-  int getCliqueSize() { return cliqueSize; }
-  vector< vector< int > > getGraph(); // todo
-  void updateFromAlg( int problemSize, int cliqueSize, vector< vector< int > > graph ); // todo
+  long getCliqueSize() { return cliqueSize; }
+  int** getGraph();
+  void updateFromAlg( int problemSize, long cliqueSize, int** graph );
 
 };
 
