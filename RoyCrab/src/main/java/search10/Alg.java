@@ -179,7 +179,13 @@ public class Alg {
                 int node1 = Integer.parseInt(Alg.vertexInG);
                 int node2 = Integer.parseInt(nei);
                 Edge edge = new Edge(Math.min(node1, node2), Math.max(node1, node2));
-                int index = edgeToIndex.get(edge);
+                int index = 0;
+                try{
+                    index = edgeToIndex.get(edge);
+                } catch(Exception e) {
+                    e.printStackTrace();
+                    System.out.println("haha");
+                }
                 Round1Map.graph.put(index, flip(edge)); 
                 graph.set(index, flip(edge));
                 edgeToIndex.put(flip(edge), index);
@@ -261,6 +267,9 @@ public class Alg {
     }
 
     private long countCliques() {
+        maxCliqueChange = 0;
+        g = null;
+        vertexInG = "";
         int cores = Runtime.getRuntime().availableProcessors();
         runRound(1, cores);
         Round1Map.graph = Round1Map.save;
