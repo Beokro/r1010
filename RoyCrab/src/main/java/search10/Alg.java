@@ -309,14 +309,14 @@ public class Alg {
         long cliques = countCliques();
 
         while(cliques != 0) {
-            g = null;
-            vertexInG = "";
-            maxCliqueChange = 0;
             cliques = getRandomNeighbor();
             client.updateFromAlg(currentSize, cliques, graph2d);
             if(useClient(currentSize, cliques)) {
                 return;
             }
+            g = null;
+            vertexInG = "";
+            maxCliqueChange = 0;
         }
     }
 
