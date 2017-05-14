@@ -118,9 +118,6 @@ public class Alg {
         edgeToIndex = new HashMap<Edge, Integer>();
         this.serverIp = serverIp;
         this.bloomFilterIp = bloomFilterIp;
-        g = null;
-        vertexInG = "";
-        maxCliqueChange = 0;
         lowerRestart = 1;
         upperRestart = 100;
         divFactor = 2000;
