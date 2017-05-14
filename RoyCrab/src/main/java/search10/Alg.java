@@ -304,7 +304,7 @@ public class Alg {
         //if(shouldUse && prob + 0.0000001 <= rand.nextDouble()) { 
         //    return true;
         //}
-        if(shouldUse && rand.nextDouble() >= 0.9) {
+        if(shouldUse && rand.nextInt(10) == 0) {
             return true;
         }
         return false;
