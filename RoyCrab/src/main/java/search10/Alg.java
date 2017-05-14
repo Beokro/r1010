@@ -7,6 +7,8 @@ import java.util.Random;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.HashMap;
+import java.util.Map;
 
 
 class NodeDeg {
@@ -97,23 +99,28 @@ public class Alg {
     private String serverIp;
     private String bloomFilterIp;
     public static TcpClient client = null;
-    public List<Edge> graph = new ArrayList<Edge>();
+    public List<Edge> graph;
+    public Map<Edge, Integer> edgeToIndex;
     public int[][] graph2d;
     private int currentSize;
-    private int change = -1;
+    
     static RemoteBloomFilter history;
-    static int t0;
-    static int t1;
-    static int step;
-    static int loopTimes;
     static long lowerRestart;
     static long upperRestart;
     static long divFactor;
+    static AdjListGraph g;
+    static String vertexInG;
+    static long maxCliqueChange;
+    static Object lock = new Object();
 
     Alg(String serverIp, String bloomFilterIp) {
         graph = new ArrayList<Edge>();
+        edgeToIndex = new HashMap<Edge, Integer>();
         this.serverIp = serverIp;
         this.bloomFilterIp = bloomFilterIp;
+        g = null;
+        vertexInG = "";
+        maxCliqueChange = 0;
         setupParams();
     }
 
@@ -125,12 +132,7 @@ public class Alg {
         }
     }
 
-    private void addHistory(int change) {
-        Edge temp = graph.get(change);
-        if(temp.node1 >= currentSize) {
-            temp = flip(temp);
-        }
-        graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
+    private void addHistory() {
         try {
             history.addHistory(graph2d);
         } catch(RemoteException e) {
@@ -143,26 +145,10 @@ public class Alg {
 
             }
         }
-        graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
     }
-
-    private void accept() {
-        Round1Map.graph.put(this.change, flip(Round1Map.graph.get(this.change))); 
-        Edge temp = graph.get(this.change);
-        if(temp.node1 >= currentSize) {
-            temp = flip(temp);
-        }
-        graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
-        graph.set(change, temp);
-    }
-
-    private boolean hasVisited(int change) {
+    
+    private boolean hasVisited() {
         boolean result = false;
-        Edge temp = graph.get(change);
-        if(temp.node1 >= currentSize) {
-            temp = flip(temp);
-        }
-        graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
         try {
             result = history.inHistory(graph2d);
         } catch(RemoteException e) {
@@ -175,22 +161,39 @@ public class Alg {
 
             }
         }
-        graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
         return result;
     }
     
     private long getRandomNeighbor() {
-        Random rand = new Random(System.currentTimeMillis());             
-        int change = rand.nextInt(graph.size());
-        while(hasVisited(change)) {
-            change = rand.nextInt(currentSize);
-        }
-        this.change = change;
-        addHistory(change);
-        Round1Map.graph.put(change, flip(Round1Map.graph.get(change)));
-        long result = countCliques();
-        Round1Map.graph.put(change, flip(Round1Map.graph.get(change)));
-        return result;
+        
+        Random rand = new Random(System.currentTimeMillis());
+        List<String> neighbors = Alg.g.getLargerNeighbors(Alg.vertexInG);
+        List<String> changeList = null;
+        do {
+            int numChanges = rand.nextInt(Math.min(neighbors.size() / 2, (int)Alg.maxCliqueChange)) + 1;
+            if(numChanges < 0) {
+                numChanges = neighbors.size() / 2 + 1;
+            }
+            java.util.Collections.shuffle(neighbors);
+            changeList = neighbors.subList(0, numChanges);
+            for(String nei : changeList) {
+                int node1 = Integer.parseInt(Alg.vertexInG);
+                int node2 = Integer.parseInt(nei);
+                Edge edge = new Edge(Math.min(node1, node2), Math.max(node1, node2));
+                int index = edgeToIndex.get(edge);
+                Round1Map.graph.put(index, flip(edge)); 
+                graph.set(index, flip(edge));
+                edgeToIndex.put(flip(edge), index);
+                edgeToIndex.remove(edge);
+                if(edge.node1 >= currentSize) {
+                    edge = flip(edge);
+                }
+                graph2d[edge.node1][edge.node2] = Math.abs(graph2d[edge.node1][edge.node2] - 1);
+            }
+        } while(hasVisited());
+        
+        addHistory();
+        return countCliques();
     }
 
     private void createGraph() {
@@ -202,9 +205,11 @@ public class Alg {
                 if(graph2d[i][j] == 1) {
                     graph.add(new Edge(i, j));
                     Round1Map.graph.put(count, new Edge(i, j));
+                    edgeToIndex.put(new Edge(i, j), count);
                 } else {
                     graph.add(new Edge(i + size, j + size));
                     Round1Map.graph.put(count, new Edge(i + size, j + size));
+                    edgeToIndex.put(new Edge(i + size, j + size), count);
                 }
                 count += 1;
             }
@@ -278,77 +283,38 @@ public class Alg {
     
     boolean useClient(int currentSize, long cliques) {
         long diff = cliques - client.getCliqueSize();
-        return (currentSize < client.getCurrentSize() ||
-                (cliques / divFactor >= lowerRestart && 
-                diff > Math.min(upperRestart, cliques / divFactor) ) || 
-                (cliques / divFactor < lowerRestart && diff > lowerRestart));
+        Random rand = new Random(System.currentTimeMillis());
+        long bound = cliques / divFactor;
+        double prob =                                                 
+                    Math.pow(Math.E, (double)(-diff) / 
+               (double)(Math.min(Math.max(bound, lowerRestart), upperRestart)));
+        boolean shouldUse = (currentSize < client.getCurrentSize() ||
+                (bound >= lowerRestart && 
+                diff > Math.min(upperRestart, bound) ) || 
+                (bound < lowerRestart && diff > lowerRestart));
+        
+        if(shouldUse && prob + 0.0000001 <= rand.nextDouble()) { 
+            return true;
+        }
+        return false;
     }
     
     public void start() {
 
         graph2d = client.getGraph();
-        graph = new ArrayList<Edge>();
-        createGraph();
-        long cliques = client.getCliqueSize();
-        long current = Long.MAX_VALUE;                                      
         currentSize = client.getCurrentSize();
-        Random rand = new Random(System.currentTimeMillis());
+        createGraph();
+        long cliques = countCliques();
 
         while(cliques != 0) {
 
-            long best = cliques;
-            int times = rand.nextInt(loopTimes) + 1;
-            int bestChange = -1;
-            for(int i = 0; i < times || bestChange != -1; i++) {
-                current = getRandomNeighbor();
-                
-                if(current < best) {
-                    best = current;
-                    bestChange = this.change;
-                }
-                if(bestChange == -1) {
-                    client.updateFromAlg(currentSize, best, graph2d);
-                } else {
-                    Edge temp = graph.get(bestChange);
-                    if(temp.node1 >= currentSize) {
-                        temp = flip(temp);
-                    }
-                    graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
-                    client.updateFromAlg(currentSize, best, graph2d);
-                    graph2d[temp.node1][temp.node2] = Math.abs(graph2d[temp.node1][temp.node2] - 1);
-                }
-                if(useClient(currentSize, best)) {
-                    return;
-                }
-            }
-            current = best;
-            this.change = bestChange;
-            if(current < cliques) { 
-                accept();
-                cliques = current;
-                if(cliques == 0) {
-                    client.updateFromAlg(currentSize, cliques, graph2d);
-                    return;
-                }
-            } else {                                                          
-                double prob =                                                 
-                    Math.pow(Math.E, ((double)(cliques - current))/((double)t1));
-                if(prob >= rand.nextDouble() + 0.0000001) { 
-                    accept();
-                    cliques = current;
-                }                                                             
-            }
-            t1 -= step;
-            if(t1 < t0) {
+            cliques = getRandomNeighbor();
+            if(useClient(currentSize, cliques)) {
                 return;
             }
         }
     }
     public static void setupParams() {
-        t0 = 5;
-        t1 = client.getCurrentSize();
-        loopTimes = t1;
-        step = 1;
         lowerRestart = 1;
         upperRestart = 100;
         divFactor = 2000;

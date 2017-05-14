@@ -43,6 +43,7 @@ public class AdjListGraph {
 		}
 
 	}
+        
 	public ArrayList<String> getNodeList() {
 		ArrayList<String> l = new ArrayList<String>(graph.keySet());
 
@@ -121,7 +122,8 @@ public class AdjListGraph {
 		String a;
 		while(it.hasNext()){
 			a=it.next();
-
+                        
+                        long current = countRunning;
 			neighbors = this.getLargerNeighbors(a);
 
 			if(neighbors.size() >= cliqueSize-1) {
@@ -164,43 +166,19 @@ public class AdjListGraph {
 					}
 				}
 			}
+                        long diff = countRunning - current;
+                        synchronized(Alg.lock) {
+                            if(diff > Alg.maxCliqueChange) {
+                                Alg.g = this;
+                                Alg.maxCliqueChange = diff;
+                                Alg.vertexInG = a;
+                            }
+                        }
 		}
 
 		return countRunning;
 
 	}
-
-	@SuppressWarnings("unused")
-	private long countTriangles () {
-
-		ArrayList<String> l = this.getNodeList();
-		ArrayList<String> neighbors; 
-
-		long countRunning=0;
-
-		Iterator<String> it = l.iterator();		
-
-		String a,b,c;
-
-		while (it.hasNext()){
-			a = it.next();
-
-
-			neighbors = this.getLargerNeighbors(a);
-
-			for(int i = 0; i<neighbors.size();i++) {
-				b = neighbors.get(i);
-				for (int j =i+1;j<neighbors.size();j++){
-					c=neighbors.get(j);
-					if(this.hasNeighbor(b, c)) countRunning++;
-				}
-			}
-
-
-		}
-		return countRunning;
-	}
-
 
 	int getNodeDegree(String a) {
 		Integer deg = degrees.get(a);
