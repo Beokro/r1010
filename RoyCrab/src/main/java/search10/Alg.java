@@ -317,9 +317,6 @@ public class Alg {
             if(useClient(currentSize, cliques)) {
                 return;
             }
-            g = null;
-            vertexInG = "";
-            maxCliqueChange = 0;
         }
     }
 
