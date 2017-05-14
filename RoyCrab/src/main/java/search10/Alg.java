@@ -295,7 +295,10 @@ public class Alg {
                 diff > Math.min(upperRestart, bound) ) || 
                 (bound < lowerRestart && diff > lowerRestart));
         
-        if(shouldUse && prob + 0.0000001 <= rand.nextDouble()) { 
+        //if(shouldUse && prob + 0.0000001 <= rand.nextDouble()) { 
+        //    return true;
+        //}
+        if(shouldUse && rand.nextDouble() > 0.875) {
             return true;
         }
         return false;
