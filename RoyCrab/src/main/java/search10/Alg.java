@@ -121,7 +121,9 @@ public class Alg {
         g = null;
         vertexInG = "";
         maxCliqueChange = 0;
-        setupParams();
+        lowerRestart = 1;
+        upperRestart = 100;
+        divFactor = 2000;
     }
 
     Edge flip(Edge input) {
@@ -307,18 +309,17 @@ public class Alg {
         long cliques = countCliques();
 
         while(cliques != 0) {
-
+            g = null;
+            vertexInG = "";
+            maxCliqueChange = 0;
             cliques = getRandomNeighbor();
+            client.updateFromAlg(currentSize, cliques, graph2d);
             if(useClient(currentSize, cliques)) {
                 return;
             }
         }
     }
-    public static void setupParams() {
-        lowerRestart = 1;
-        upperRestart = 100;
-        divFactor = 2000;
-    }
+
     public static void main( String[] args ) {
 
         if(args.length < 2) {
