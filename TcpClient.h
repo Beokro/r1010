@@ -13,7 +13,6 @@
 #include <stdexcept>
 
 
-
 using namespace std;
 
 class TcpClient {
