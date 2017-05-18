@@ -126,7 +126,7 @@ public class Alg {
         divFactor = 2000;
         localGamma = 0.001;
         globalGamma = 0.0005;
-        beta = 10;
+        beta = 20;
     }
 
     Edge flip(Edge input) {
