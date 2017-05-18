@@ -127,7 +127,7 @@ public class Alg {
         divFactor = 2000;
         localGamma = 0.001;
         globalGamma = 0.0005;
-        beta = 30;
+        beta = 35;
         globalBeta = 20;
     }
 
@@ -311,9 +311,9 @@ public class Alg {
     
     private void adjustBeta(long diff) {
         if(diff >= 500) {
-            beta = 50;
+            beta = 55;
         } else {
-            beta = 30;
+            beta = 35;
         }
     }
     
