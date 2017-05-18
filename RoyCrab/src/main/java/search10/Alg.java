@@ -125,7 +125,7 @@ public class Alg {
         lowerRestart = 1;
         upperRestart = 100;
         divFactor = 2000;
-        localGamma = 0.001;
+        localGamma = 0.0007;
         globalGamma = 0.0005;
         betaBase = 10;
         globalBetaBase = 20;
