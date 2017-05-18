@@ -103,6 +103,9 @@ public class Alg {
     public Map<Edge, Integer> edgeToIndex;
     public int[][] graph2d;
     private int currentSize;
+    private double localGamma;
+    private double globalGamma;
+    private double beta;
     
     static RemoteBloomFilter history;
     static long lowerRestart;
@@ -121,6 +124,9 @@ public class Alg {
         lowerRestart = 1;
         upperRestart = 100;
         divFactor = 2000;
+        localGamma = 0.001;
+        globalGamma = 0.0005;
+        beta = 10;
     }
 
     Edge flip(Edge input) {
@@ -163,7 +169,19 @@ public class Alg {
         return result;
     }
     
-    private long getRandomNeighbor() {
+    private void applyChange(int index) {
+        Edge edge = graph.get(index);
+        Round1Map.graph.put(index, flip(edge)); 
+        graph.set(index, flip(edge));
+        edgeToIndex.put(flip(edge), index);
+        edgeToIndex.remove(edge);
+        if(edge.node1 >= currentSize) {
+            edge = flip(edge);
+        }
+        graph2d[edge.node1][edge.node2] = Math.abs(graph2d[edge.node1][edge.node2] - 1);
+    }
+    
+    private long getRandomNeighbor(List<Integer> changes) {
         
         Random rand = new Random(System.currentTimeMillis());
         List<String> neighbors = Alg.g.getLargerNeighbors(Alg.vertexInG);
@@ -180,20 +198,9 @@ public class Alg {
                 int node2 = Integer.parseInt(nei);
                 Edge edge = new Edge(Math.min(node1, node2), Math.max(node1, node2));
                 int index = 0;
-                try{
-                    index = edgeToIndex.get(edge);
-                } catch(Exception e) {
-                    e.printStackTrace();
-                    System.out.println("haha");
-                }
-                Round1Map.graph.put(index, flip(edge)); 
-                graph.set(index, flip(edge));
-                edgeToIndex.put(flip(edge), index);
-                edgeToIndex.remove(edge);
-                if(edge.node1 >= currentSize) {
-                    edge = flip(edge);
-                }
-                graph2d[edge.node1][edge.node2] = Math.abs(graph2d[edge.node1][edge.node2] - 1);
+                index = edgeToIndex.get(edge);
+                applyChange(index);
+                changes.add(index);
             }
         } while(hasVisited());
         
@@ -289,25 +296,32 @@ public class Alg {
         return cliques;
     }
     
-    boolean useClient(int currentSize, long cliques) {
-        long diff = cliques - client.getCliqueSize();
-        Random rand = new Random(System.currentTimeMillis());
-        long bound = cliques / divFactor;
-        double prob =                                                 
-                    Math.pow(Math.E, (double)(-diff) / 
-               (double)(Math.min(Math.max(bound, lowerRestart), upperRestart)));
-        boolean shouldUse = (currentSize < client.getCurrentSize() ||
-                (bound >= lowerRestart && 
-                diff > Math.min(upperRestart, bound) ) || 
-                (bound < lowerRestart && diff > lowerRestart));
+    private boolean useClient(int currentSize, long cliques) {
         
-        //if(shouldUse && prob + 0.0000001 <= rand.nextDouble()) { 
-        //    return true;
-        //}
-        if(shouldUse && rand.nextInt(10) == 0) {
+        if(currentSize < client.getCurrentSize()) {
             return true;
         }
-        return false;
+        
+        long min = client.getCliqueSize();
+        
+        return notAccept(globalGamma, cliques, min, min);
+    }
+    
+    private double fstun(double gamma, long cliques, long min) {
+        return 1 - Math.pow(Math.E, -gamma*(cliques - min));
+    }
+    
+    private double acceptProb(double gamma, long current, long last, long localMin) {
+        return Math.pow(Math.E,
+                -beta*(fstun(gamma, current, localMin) - fstun(gamma, last, localMin)));
+    }
+    
+    private boolean notAccept(double gamma, long current, long last, long localMin) {
+        if(current <= last) {
+            return false;
+        }
+        Random rand = new Random(System.currentTimeMillis());
+        return rand.nextDouble() > acceptProb(gamma, current, last, localMin);
     }
     
     public void start() {
@@ -315,12 +329,31 @@ public class Alg {
         graph2d = client.getGraph();
         currentSize = client.getCurrentSize();
         createGraph();
-        long cliques = countCliques();
-
-        while(cliques != 0) {
-            cliques = getRandomNeighbor();
-            client.updateFromAlg(currentSize, cliques, graph2d);
-            if(useClient(currentSize, cliques)) {
+        long localMin = countCliques();
+        long lastCliques = localMin;
+        long current = localMin;
+        boolean accepted = true;
+        
+        while(localMin != 0) {
+            if(accepted) {
+                lastCliques = current;
+            }
+            List<Integer> changes = new ArrayList<Integer>();
+            current = getRandomNeighbor(changes);
+            client.updateFromAlg(currentSize, current, graph2d);
+            localMin = Math.min(lastCliques, Math.min(localMin, current));
+            
+            if(notAccept(localGamma, current, lastCliques, localMin)) {
+                // do changes again to undo them
+                for(int change : changes) {
+                    applyChange(change);
+                }
+                accepted = false;
+            } else {
+                accepted = true;
+            }
+            
+            if(useClient(currentSize, localMin)) {
                 return;
             }
         }
