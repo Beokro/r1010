@@ -127,7 +127,7 @@ public class Alg {
         divFactor = 2000;
         localGamma = 0.001;
         globalGamma = 0.0005;
-        beta = 20;
+        beta = 25;
         globalBeta = 20;
     }
 
@@ -313,7 +313,7 @@ public class Alg {
         if(diff >= 500) {
             beta = 40;
         } else {
-            beta = 20;
+            beta = 25;
         }
     }
     
