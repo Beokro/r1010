@@ -105,8 +105,8 @@ public class Alg {
     private int currentSize;
     private double localGamma;
     private double globalGamma;
-    private double beta;
-    private double globalBeta;
+    private double betaBase;
+    private double globalBetaBase;
     
     static RemoteBloomFilter history;
     static long lowerRestart;
@@ -127,8 +127,8 @@ public class Alg {
         divFactor = 2000;
         localGamma = 0.001;
         globalGamma = 0.0005;
-        beta = 35;
-        globalBeta = 20;
+        betaBase = 10;
+        globalBetaBase = 20;
     }
 
     Edge flip(Edge input) {
@@ -306,34 +306,29 @@ public class Alg {
         
         long min = client.getCliqueSize();
         
-        return notAccept(globalBeta, globalGamma, cliques, min, min);
+        return notAccept(globalBetaBase, globalGamma, cliques, min, min);
     }
     
-    private void adjustBeta(long diff) {
-        if(diff >= 500) {
-            beta = 55;
-        } else {
-            beta = 35;
-        }
+    private double adjustBeta(long diff, double betaBase) {
+        return betaBase + (double)(diff)/0.1;
     }
     
     private double fstun(double gamma, long cliques, long min) {
-        long diff = cliques - min;
-        adjustBeta(diff);
-        return 1 - Math.pow(Math.E, -gamma*diff);
+        return 1 - Math.pow(Math.E, -gamma*(cliques-min));
     }
     
-    private double acceptProb(double beta, double gamma, long current, long last, long localMin) {
+    private double acceptProb(double betaBase, double gamma, long current, long last, long localMin) {
+        double beta = adjustBeta(current - localMin, betaBase);
         return Math.pow(Math.E,
                 -beta*(fstun(gamma, current, localMin) - fstun(gamma, last, localMin)));
     }
     
-    private boolean notAccept(double beta, double gamma, long current, long last, long localMin) {
+    private boolean notAccept(double betaBase, double gamma, long current, long last, long localMin) {
         if(current <= last) {
             return false;
         }
         Random rand = new Random(System.currentTimeMillis());
-        return rand.nextDouble() > acceptProb(beta, gamma, current, last, localMin);
+        return rand.nextDouble() > acceptProb(betaBase, gamma, current, last, localMin);
     }
     
     public void start() {
@@ -355,7 +350,7 @@ public class Alg {
             client.updateFromAlg(currentSize, current, graph2d);
             localMin = Math.min(lastCliques, Math.min(localMin, current));
             
-            if(notAccept(beta, localGamma, current, lastCliques, localMin)) {
+            if(notAccept(betaBase, localGamma, current, lastCliques, localMin)) {
                 // do changes again to undo them
                 for(int change : changes) {
                     applyChange(change);
