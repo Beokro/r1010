@@ -99,7 +99,6 @@ public class Alg {
     private String serverIp;
     private String bloomFilterIp;
     public static TcpClient client = null;
-    public List<Edge> graph;
     public Map<Edge, Integer> edgeToIndex;
     public int[][] graph2d;
     private int currentSize;
@@ -109,22 +108,15 @@ public class Alg {
     private double globalBetaBase;
     
     static RemoteBloomFilter history;
-    static long lowerRestart;
-    static long upperRestart;
-    static long divFactor;
     static AdjListGraph g;
     static String vertexInG;
     static long maxCliqueChange;
     static Object lock = new Object();
 
     Alg(String serverIp, String bloomFilterIp) {
-        graph = new ArrayList<Edge>();
         edgeToIndex = new HashMap<Edge, Integer>();
         this.serverIp = serverIp;
         this.bloomFilterIp = bloomFilterIp;
-        lowerRestart = 1;
-        upperRestart = 100;
-        divFactor = 2000;
         localGamma = 0.0007;
         globalGamma = 0.0005;
         betaBase = 10;
@@ -172,9 +164,8 @@ public class Alg {
     }
     
     private void applyChange(int index) {
-        Edge edge = graph.get(index);
+        Edge edge = Round1Map.graph.get(index);
         Round1Map.graph.put(index, flip(edge)); 
-        graph.set(index, flip(edge));
         edgeToIndex.put(flip(edge), index);
         edgeToIndex.remove(edge);
         if(edge.node1 >= currentSize) {
@@ -217,11 +208,9 @@ public class Alg {
         for(int i = 0; i < size; i++) {
             for(int j = i + 1; j < size; j++) {
                 if(graph2d[i][j] == 1) {
-                    graph.add(new Edge(i, j));
                     Round1Map.graph.put(count, new Edge(i, j));
                     edgeToIndex.put(new Edge(i, j), count);
                 } else {
-                    graph.add(new Edge(i + size, j + size));
                     Round1Map.graph.put(count, new Edge(i + size, j + size));
                     edgeToIndex.put(new Edge(i + size, j + size), count);
                 }
