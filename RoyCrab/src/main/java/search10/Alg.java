@@ -108,7 +108,7 @@ public class Alg {
     private double globalBetaBase;
     
     static RemoteBloomFilter history;
-    static AdjListGraph g;
+    static List<String> neighbors;
     static String vertexInG;
     static long maxCliqueChange;
     static Object lock = new Object();
@@ -177,7 +177,6 @@ public class Alg {
     private long getRandomNeighbor(List<Integer> changes) {
         
         Random rand = new Random(System.currentTimeMillis());
-        List<String> neighbors = Alg.g.getLargerNeighbors(Alg.vertexInG);
         List<String> changeList = null;
         do {
             int numChanges = rand.nextInt(Math.min(neighbors.size() / 2, (int)Alg.maxCliqueChange)) + 1;
@@ -191,7 +190,12 @@ public class Alg {
                 int node2 = Integer.parseInt(nei);
                 Edge edge = new Edge(Math.min(node1, node2), Math.max(node1, node2));
                 int index = 0;
+                try {
                 index = edgeToIndex.get(edge);
+                } catch(Exception e) {
+                    e.printStackTrace();
+                    System.out.println("haha");
+                }
                 applyChange(index);
                 changes.add(index);
             }
@@ -266,7 +270,7 @@ public class Alg {
 
     private long countCliques() {
         maxCliqueChange = 0;
-        g = null;
+        neighbors = new ArrayList<String>();
         vertexInG = "";
         int cores = Runtime.getRuntime().availableProcessors();
         runRound(1, cores);

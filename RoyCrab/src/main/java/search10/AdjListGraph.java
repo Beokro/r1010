@@ -169,7 +169,7 @@ public class AdjListGraph {
                         long diff = countRunning - current;
                         synchronized(Alg.lock) {
                             if(diff > Alg.maxCliqueChange) {
-                                Alg.g = this;
+                                Alg.neighbors = neighbors;
                                 Alg.maxCliqueChange = diff;
                                 Alg.vertexInG = a;
                             }
