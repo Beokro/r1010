@@ -241,7 +241,7 @@ class TcpServer( object ):
         while True:
             if self.lockChecker:
                 # lock being lock too long, might be a dead lock
-                self.doLogging( 'deadlock breaker force to release a lock', ' ', isServer = True )
+                self.doLogging( 'deadlock breaker force to release a lock with ID ' + str( self.lockID ), ' ', isServer = True )
                 try:
                     self.releaseLock()
                 except:
