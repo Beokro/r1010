@@ -99,6 +99,7 @@ class TcpServer( object ):
         self.myAddr = ' '
         self.myPort = -1
         self.firstCandidate = False
+        self.lockChecker = False
         self.lock = threading.Lock()
         self.lastResult = -1
         self.lastGraph = ' '
@@ -109,7 +110,7 @@ class TcpServer( object ):
             self.currentGraph = self.generateGraph()
         self.cliqueSize = sys.maxsize
         self.counter = 0
-        self.lockID = -1
+        self.lockID = '-1'
         self.sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
         self.sock.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
         self.sock.bind( ( self.host, self.port ) )
@@ -217,6 +218,10 @@ class TcpServer( object ):
         ttt.daemon = True
         ttt.start()
 
+        ttt = threading.Thread( target = self.deadLockBreaker )
+        ttt.daemon = True
+        ttt.start()
+
         if self.backup:
             tt = threading.Thread( target = self.contactMainServer )
             tt.daemon = True
@@ -232,6 +237,18 @@ class TcpServer( object ):
             t.daemon = True
             t.start()
 
+    def deadLockBreaker( self ):
+        while True:
+            if self.lockChecker:
+                # lock being lock too long, might be a dead lock
+                self.doLogging( 'deadlock breaker force to release a lock with ID ' + str( self.lockID ), ' ', isServer = True )
+                try:
+                    self.releaseLock()
+                except:
+                    print 'deadlock breaker caused exception'
+            if self.lockID != '-1':
+                self.lockChecker = True
+            time.sleep( 30 )
 
     def saveTempAnswer( self ):
         global answerSaveTime
@@ -784,7 +801,8 @@ class TcpServer( object ):
         self.lockID = ID
 
     def releaseLock( self ):
-        self.lockID = -1
+        self.lockID = '-1'
+        self.lockChecker = False
         self.lock.release()
 
 def usage():
