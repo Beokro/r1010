@@ -337,6 +337,7 @@ public class Alg {
         currentSize = client.getCurrentSize();
         createGraph();
         long localMin = countCliques();
+        client.updateFromAlg(currentSize, localMin, graph2d);
         long lastCliques = localMin;
         long current = localMin;
         boolean accepted = true;
