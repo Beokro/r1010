@@ -189,8 +189,8 @@ public class Alg {
                 int node1 = Integer.parseInt(Alg.vertexInG);
                 int node2 = Integer.parseInt(nei);
                 Edge edge = new Edge(Math.min(node1, node2), Math.max(node1, node2));
-                int index = edgeToIndex.get(edge);
                 
+                int index = edgeToIndex.get(edge);
                 applyChange(index);
                 changes.add(index);
             }
@@ -335,15 +335,24 @@ public class Alg {
                 lastCliques = current;
             }
             List<Integer> changes = new ArrayList<Integer>();
+            
+            String saveNode = Alg.vertexInG;
+            List<String> saveNeis = Alg.neighbors;
+            long saveCliqueChange = Alg.maxCliqueChange;
+            
             current = getRandomNeighbor(changes);
             client.updateFromAlg(currentSize, current, graph2d);
             localMin = Math.min(lastCliques, Math.min(localMin, current));
+            
             
             if(notAccept(betaBase, localGamma, current, lastCliques, localMin)) {
                 // do changes again to undo them
                 for(int change : changes) {
                     applyChange(change);
                 }
+                vertexInG = saveNode;
+                neighbors = saveNeis;
+                maxCliqueChange = saveCliqueChange;
                 accepted = false;
             } else {
                 accepted = true;
