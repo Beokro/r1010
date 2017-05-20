@@ -9,6 +9,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
 
 
 class NodeDeg {
@@ -117,7 +118,7 @@ public class Alg {
         edgeToIndex = new HashMap<Edge, Integer>();
         this.serverIp = serverIp;
         this.bloomFilterIp = bloomFilterIp;
-        localGamma = 0.0013;
+        localGamma = 0.0015;
         globalGamma = 0.0005;
         betaBase = 10;
         globalBetaBase = 20;
@@ -295,21 +296,26 @@ public class Alg {
     
     private long getRandomNeighbor(List<Integer> changes) {
         
+        
         Random rand = new Random(System.currentTimeMillis());
-        List<String> changeList = null;
+        List<String> temp = new ArrayList<String>(neighbors);
+        
         do {
-            int numChanges = rand.nextInt(Math.min(neighbors.size() / 2, (int)Alg.maxCliqueChange)) + 1;
+            int numChanges = rand.nextInt(Math.min(temp.size() / 2, (int)Alg.maxCliqueChange)) + 1;
             if(numChanges < 0) {
-                numChanges = neighbors.size() / 2 + 1;
+                numChanges = temp.size() / 2 + 1;
             }
-            java.util.Collections.shuffle(neighbors);
-            changeList = neighbors.subList(0, numChanges);
-            for(String nei : changeList) {
+            java.util.Collections.shuffle(temp, rand);
+            for(int i = 0; i < numChanges; i++) {
+                String nei = temp.get(i);
                 int node1 = Integer.parseInt(Alg.vertexInG);
                 int node2 = Integer.parseInt(nei);
                 Edge edge = new Edge(Math.min(node1, node2), Math.max(node1, node2));
+                // if the edge is flipped in the previous round, then flip it back
+                if(edgeToIndex.get(edge) == null) {
+                    edge = flip(edge);
+                }
                 int index = edgeToIndex.get(edge);
-
                 applyChange(index);
                 changes.add(index);
             }
@@ -339,7 +345,6 @@ public class Alg {
             String saveNode = Alg.vertexInG;
             List<String> saveNeis = Alg.neighbors;
             long saveCliqueChange = Alg.maxCliqueChange;
-            
             current = getRandomNeighbor(changes);
             client.updateFromAlg(currentSize, current, graph2d);
             localMin = Math.min(lastCliques, Math.min(localMin, current));
