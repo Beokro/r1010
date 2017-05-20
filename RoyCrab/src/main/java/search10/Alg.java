@@ -117,7 +117,7 @@ public class Alg {
         edgeToIndex = new HashMap<Edge, Integer>();
         this.serverIp = serverIp;
         this.bloomFilterIp = bloomFilterIp;
-        localGamma = 0.0007;
+        localGamma = 0.0013;
         globalGamma = 0.0005;
         betaBase = 10;
         globalBetaBase = 20;
@@ -161,43 +161,6 @@ public class Alg {
             }
         }
         return result;
-    }
-    
-    private void applyChange(int index) {
-        Edge edge = Round1Map.graph.get(index);
-        Round1Map.graph.put(index, flip(edge)); 
-        edgeToIndex.put(flip(edge), index);
-        edgeToIndex.remove(edge);
-        if(edge.node1 >= currentSize) {
-            edge = flip(edge);
-        }
-        graph2d[edge.node1][edge.node2] = Math.abs(graph2d[edge.node1][edge.node2] - 1);
-    }
-    
-    private long getRandomNeighbor(List<Integer> changes) {
-        
-        Random rand = new Random(System.currentTimeMillis());
-        List<String> changeList = null;
-        do {
-            int numChanges = rand.nextInt(Math.min(neighbors.size() / 2, (int)Alg.maxCliqueChange)) + 1;
-            if(numChanges < 0) {
-                numChanges = neighbors.size() / 2 + 1;
-            }
-            java.util.Collections.shuffle(neighbors);
-            changeList = neighbors.subList(0, numChanges);
-            for(String nei : changeList) {
-                int node1 = Integer.parseInt(Alg.vertexInG);
-                int node2 = Integer.parseInt(nei);
-                Edge edge = new Edge(Math.min(node1, node2), Math.max(node1, node2));
-                
-                int index = edgeToIndex.get(edge);
-                applyChange(index);
-                changes.add(index);
-            }
-        } while(hasVisited());
-        
-        addHistory();
-        return countCliques();
     }
 
     private void createGraph() {
@@ -319,6 +282,43 @@ public class Alg {
         return rand.nextDouble() > acceptProb(betaBase, gamma, current, last, localMin);
     }
     
+    private void applyChange(int index) {
+        Edge edge = Round1Map.graph.get(index);
+        Round1Map.graph.put(index, flip(edge)); 
+        edgeToIndex.put(flip(edge), index);
+        edgeToIndex.remove(edge);
+        if(edge.node1 >= currentSize) {
+            edge = flip(edge);
+        }
+        graph2d[edge.node1][edge.node2] = Math.abs(graph2d[edge.node1][edge.node2] - 1);
+    }
+    
+    private long getRandomNeighbor(List<Integer> changes) {
+        
+        Random rand = new Random(System.currentTimeMillis());
+        List<String> changeList = null;
+        do {
+            int numChanges = rand.nextInt(Math.min(neighbors.size() / 2, (int)Alg.maxCliqueChange)) + 1;
+            if(numChanges < 0) {
+                numChanges = neighbors.size() / 2 + 1;
+            }
+            java.util.Collections.shuffle(neighbors);
+            changeList = neighbors.subList(0, numChanges);
+            for(String nei : changeList) {
+                int node1 = Integer.parseInt(Alg.vertexInG);
+                int node2 = Integer.parseInt(nei);
+                Edge edge = new Edge(Math.min(node1, node2), Math.max(node1, node2));
+                int index = edgeToIndex.get(edge);
+
+                applyChange(index);
+                changes.add(index);
+            }
+        } while(hasVisited());
+        
+        addHistory();
+        return countCliques();
+    }
+    
     public void start() {
 
         graph2d = client.getGraph();
@@ -343,7 +343,6 @@ public class Alg {
             current = getRandomNeighbor(changes);
             client.updateFromAlg(currentSize, current, graph2d);
             localMin = Math.min(lastCliques, Math.min(localMin, current));
-            
             
             if(notAccept(betaBase, localGamma, current, lastCliques, localMin)) {
                 // do changes again to undo them
