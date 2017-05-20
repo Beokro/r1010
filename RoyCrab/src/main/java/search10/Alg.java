@@ -9,8 +9,6 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentMap;
-
 
 class NodeDeg {
     int node;
@@ -295,7 +293,6 @@ public class Alg {
     }
     
     private long getRandomNeighbor(List<Integer> changes) {
-        
         
         Random rand = new Random(System.currentTimeMillis());
         List<String> temp = new ArrayList<String>(neighbors);
