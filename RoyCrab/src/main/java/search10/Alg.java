@@ -189,13 +189,8 @@ public class Alg {
                 int node1 = Integer.parseInt(Alg.vertexInG);
                 int node2 = Integer.parseInt(nei);
                 Edge edge = new Edge(Math.min(node1, node2), Math.max(node1, node2));
-                int index = 0;
-                try {
-                index = edgeToIndex.get(edge);
-                } catch(Exception e) {
-                    e.printStackTrace();
-                    System.out.println("haha");
-                }
+                int index = edgeToIndex.get(edge);
+                
                 applyChange(index);
                 changes.add(index);
             }
