@@ -292,6 +292,17 @@ public class Alg {
         graph2d[edge.node1][edge.node2] = Math.abs(graph2d[edge.node1][edge.node2] - 1);
     }
     
+    private long getAnyNeighbor(List<Integer> changes) {
+        Random rand = new Random(System.currentTimeMillis());
+        do {
+            int index = rand.nextInt(Round1Map.graph.size());
+            applyChange(index);
+            changes.add(index);
+        } while(hasVisited());
+        addHistory();
+        return countCliques();
+    }
+    
     private long getRandomNeighbor(List<Integer> changes) {
         
         Random rand = new Random(System.currentTimeMillis());
@@ -332,6 +343,7 @@ public class Alg {
         long lastCliques = localMin;
         long current = localMin;
         boolean accepted = true;
+        Random rand = new Random(System.currentTimeMillis());
         
         while(localMin != 0) {
             if(accepted) {
@@ -342,7 +354,12 @@ public class Alg {
             String saveNode = Alg.vertexInG;
             List<String> saveNeis = Alg.neighbors;
             long saveCliqueChange = Alg.maxCliqueChange;
-            current = getRandomNeighbor(changes);
+            if(rand.nextInt(2) == 1) {
+                current = getRandomNeighbor(changes);
+            } else {
+                current = getAnyNeighbor(changes);
+            }
+            
             client.updateFromAlg(currentSize, current, graph2d);
             localMin = Math.min(lastCliques, Math.min(localMin, current));
             
