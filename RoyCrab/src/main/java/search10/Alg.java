@@ -433,6 +433,7 @@ public class Alg {
         } 
 
         System.out.println("Alg start");
+        System.out.println(Runtime.getRuntime().availableProcessors() + " processors");
         while(true) {
             excalibur = new Alg(serverIp, bloomFilterIp);
             excalibur.start();
