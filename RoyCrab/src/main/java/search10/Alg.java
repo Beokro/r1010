@@ -116,7 +116,7 @@ public class Alg {
         edgeToIndex = new HashMap<Edge, Integer>();
         this.serverIp = serverIp;
         this.bloomFilterIp = bloomFilterIp;
-        localGamma = 0.001;
+        localGamma = 0.0005;
         globalGamma = 0.0005;
         betaBase = 10;
         globalBetaBase = 20;
@@ -294,13 +294,38 @@ public class Alg {
     
     private long getAnyNeighbor(List<Integer> changes) {
         Random rand = new Random(System.currentTimeMillis());
-        do {
+        int numChanges = rand.nextInt(currentSize / 10) + 1;
+        long bestCliques = client.getCliqueSize();
+        int bestChange = -1;
+        String saveNode = vertexInG;
+        List<String> saveNeis = neighbors;
+        long saveCliqueChange = maxCliqueChange;
+        for(int i = 0; i < numChanges; i++) {
             int index = rand.nextInt(Round1Map.graph.size());
             applyChange(index);
-            changes.add(index);
-        } while(hasVisited());
-        addHistory();
-        return countCliques();
+            if(hasVisited()) {
+                applyChange(index);
+                continue;
+            }
+            addHistory();
+            long current = countCliques();
+            if(current < bestCliques) {
+                bestCliques = current;
+                bestChange = index;
+                saveNode = vertexInG;
+                saveNeis = neighbors;
+                saveCliqueChange = maxCliqueChange;
+            }
+            applyChange(index);
+        }
+        vertexInG = saveNode;
+        neighbors = saveNeis;
+        maxCliqueChange = saveCliqueChange;
+        if(bestChange != -1) {
+            applyChange(bestChange);
+            changes.add(bestChange);
+        }
+        return bestCliques;
     }
     
     private long getRandomNeighbor(List<Integer> changes) {
