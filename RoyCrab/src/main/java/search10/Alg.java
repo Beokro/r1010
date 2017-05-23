@@ -103,6 +103,8 @@ public class Alg {
     private int currentSize;
     private double localGamma;
     private double globalGamma;
+    final private double gammaForSearch = 0.004;
+    final private double gammaForTunnel = 0.001;
     private double betaBase;
     private double globalBetaBase;
     
@@ -116,8 +118,8 @@ public class Alg {
         edgeToIndex = new HashMap<Edge, Integer>();
         this.serverIp = serverIp;
         this.bloomFilterIp = bloomFilterIp;
-        localGamma = 0.0005;
-        globalGamma = 0.0005;
+        localGamma = gammaForSearch;
+        globalGamma = gammaForTunnel;
         betaBase = 10;
         globalBetaBase = 20;
     }
@@ -281,6 +283,22 @@ public class Alg {
         return rand.nextDouble() > acceptProb(betaBase, gamma, current, last, localMin);
     }
     
+    private void adjustLocalGamma(List<Double> data) {
+        if(data.size() < 500) {
+            return;
+        }
+        DFA dfa = new DFA(data);
+        double alpha = dfa.dfa();
+        
+        if(alpha > 0.75) {
+            // local entrapment detected
+            localGamma = gammaForTunnel;
+        } else {
+            localGamma = gammaForSearch;
+        }
+        data.clear();
+    }
+    
     private void applyChange(int index) {
         Edge edge = Round1Map.graph.get(index);
         Round1Map.graph.put(index, flip(edge)); 
@@ -294,7 +312,7 @@ public class Alg {
     
     private long getAnyNeighbor(List<Integer> changes) {
         Random rand = new Random(System.currentTimeMillis());
-        int numChanges = rand.nextInt(currentSize / 10) + 1;
+        int numChanges = rand.nextInt(currentSize / 30) + 1;
         long bestCliques = client.getCliqueSize();
         int bestChange = -1;
         String saveNode = vertexInG;
@@ -369,7 +387,7 @@ public class Alg {
         long current = localMin;
         boolean accepted = true;
         Random rand = new Random(System.currentTimeMillis());
-        
+        List<Double> data = new ArrayList<Double>();
         while(localMin != 0) {
             if(accepted) {
                 lastCliques = current;
@@ -387,7 +405,8 @@ public class Alg {
             
             client.updateFromAlg(currentSize, current, graph2d);
             localMin = Math.min(lastCliques, Math.min(localMin, current));
-            
+            data.add((double)(current));
+            adjustLocalGamma(data);
             if(notAccept(betaBase, localGamma, current, lastCliques, localMin)) {
                 // do changes again to undo them
                 for(int change : changes) {
