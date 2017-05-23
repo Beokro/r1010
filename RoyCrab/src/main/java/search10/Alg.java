@@ -284,7 +284,7 @@ public class Alg {
     }
     
     private void adjustLocalGamma(List<Double> data) {
-        if(data.size() < 500) {
+        if(data.size() < 50) {
             return;
         }
         DFA dfa = new DFA(data);
@@ -387,7 +387,6 @@ public class Alg {
         long current = localMin;
         boolean accepted = true;
         Random rand = new Random(System.currentTimeMillis());
-        List<Double> data = new ArrayList<Double>();
         while(localMin != 0) {
             if(accepted) {
                 lastCliques = current;
@@ -405,8 +404,6 @@ public class Alg {
             
             client.updateFromAlg(currentSize, current, graph2d);
             localMin = Math.min(lastCliques, Math.min(localMin, current));
-            data.add((double)(current));
-            adjustLocalGamma(data);
             if(notAccept(betaBase, localGamma, current, lastCliques, localMin)) {
                 // do changes again to undo them
                 for(int change : changes) {

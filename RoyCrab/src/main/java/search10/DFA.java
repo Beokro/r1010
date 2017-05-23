@@ -60,7 +60,7 @@ public class DFA {
     public double dfa() {
         SimpleRegression reg = new SimpleRegression(true);
         int size = data.size();
-        int n = 20;
+        int n = 4;
         while(n <= size / 4) {
             reg.addData(Math.log10(n), Math.log10(getFluctuation(n)));
             n += 1;
