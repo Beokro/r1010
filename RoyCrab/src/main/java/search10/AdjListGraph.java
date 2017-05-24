@@ -21,6 +21,7 @@ public class AdjListGraph {
 
 	private long unorientedSize=0;
 	private long orientedSize=0;
+        public int node;
 
 	HashMap<String, HashSet<String>> graph = new HashMap<String, HashSet<String>>();  
 	HashMap<String, Integer> degrees =new HashMap<String, Integer>();
@@ -123,7 +124,6 @@ public class AdjListGraph {
 		while(it.hasNext()){
 			a=it.next();
                         
-                        long current = countRunning;
 			neighbors = this.getLargerNeighbors(a);
 
 			if(neighbors.size() >= cliqueSize-1) {
@@ -151,6 +151,7 @@ public class AdjListGraph {
 								indexes[fixing] = indexes[fixing-1]+1;
 							} else {
 								countRunning++;
+                                                                Alg.recordEdges(this.node, a, indexes, neighbors);
 								indexes[fixing]++;
 							}
 							if (!(indexes[fixing]<(neighbors.size()-(indexes.length  - fixing - 1)))) {
@@ -166,14 +167,6 @@ public class AdjListGraph {
 					}
 				}
 			}
-                        long diff = countRunning - current;
-                        synchronized(Alg.lock) {
-                            if(diff > Alg.maxCliqueChange) {
-                                Alg.neighbors = neighbors;
-                                Alg.maxCliqueChange = diff;
-                                Alg.vertexInG = a;
-                            }
-                        }
 		}
 
 		return countRunning;

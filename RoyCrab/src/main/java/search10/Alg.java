@@ -7,8 +7,12 @@ import java.util.Random;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 class NodeDeg {
     int node;
@@ -109,10 +113,7 @@ public class Alg {
     private double globalBetaBase;
     
     static RemoteBloomFilter history;
-    static List<String> neighbors;
-    static String vertexInG;
-    static long maxCliqueChange;
-    static Object lock = new Object();
+    static ConcurrentMap<Edge, AtomicLong> edgeToClique;
 
     Alg(String serverIp, String bloomFilterIp) {
         edgeToIndex = new HashMap<Edge, Integer>();
@@ -124,6 +125,24 @@ public class Alg {
         globalBetaBase = 10;
     }
 
+    static void recordEdges(int node1, String node2, int[] indexes, List<String> neighbors) {
+        List<Integer> nodes =  new ArrayList<Integer>();
+        nodes.add(node1);
+        nodes.add(Integer.parseInt(node2));
+        for(int i = 0; i < indexes.length; i++) {
+            String node = neighbors.get(indexes[i]);
+            nodes.add(Integer.parseInt(node));
+        }
+        Collections.sort(nodes);
+        for(int i = 0; i < nodes.size(); i++) {
+            for(int j = i + 1; j < nodes.size(); j++) {
+                Edge edge = new Edge(nodes.get(i), nodes.get(j));
+                edgeToClique.putIfAbsent(edge, new AtomicLong());
+                edgeToClique.get(edge).incrementAndGet();
+            }
+        }
+    }
+    
     Edge flip(Edge input) {
         if(input.node1 < currentSize) {
             return new Edge(input.node1 + currentSize, input.node2 + currentSize);
@@ -228,9 +247,7 @@ public class Alg {
     }
 
     private long countCliques() {
-        maxCliqueChange = 0;
-        neighbors = new ArrayList<String>();
-        vertexInG = "";
+        edgeToClique = new ConcurrentHashMap<Edge, AtomicLong>();
         int cores = Runtime.getRuntime().availableProcessors();
         runRound(1, cores);
         Round1Map.graph = Round1Map.save;
@@ -315,9 +332,7 @@ public class Alg {
         int numChanges = rand.nextInt(currentSize / 30) + 1;
         long bestCliques = client.getCliqueSize();
         int bestChange = -1;
-        String saveNode = vertexInG;
-        List<String> saveNeis = neighbors;
-        long saveCliqueChange = maxCliqueChange;
+        ConcurrentMap<Edge, AtomicLong> save = edgeToClique;
         for(int i = 0; i < numChanges; i++) {
             int index = rand.nextInt(Round1Map.graph.size());
             applyChange(index);
@@ -330,15 +345,11 @@ public class Alg {
             if(current < bestCliques) {
                 bestCliques = current;
                 bestChange = index;
-                saveNode = vertexInG;
-                saveNeis = neighbors;
-                saveCliqueChange = maxCliqueChange;
+                save = edgeToClique;
             }
             applyChange(index);
         }
-        vertexInG = saveNode;
-        neighbors = saveNeis;
-        maxCliqueChange = saveCliqueChange;
+        edgeToClique = save;
         if(bestChange != -1) {
             applyChange(bestChange);
             changes.add(bestChange);
@@ -346,32 +357,25 @@ public class Alg {
         return bestCliques;
     }
     
-    private long getRandomNeighbor(List<Integer> changes) {
-        
-        Random rand = new Random(System.currentTimeMillis());
-        List<String> temp = new ArrayList<String>(neighbors);
-        
-        do {
-            int numChanges = rand.nextInt(Math.min(temp.size() / 2, (int)Alg.maxCliqueChange)) + 1;
-            if(numChanges < 0) {
-                numChanges = temp.size() / 2 + 1;
+    private long getSelectedNeighbor(List<Integer> changes) {
+        List<Map.Entry<Edge, AtomicLong>> list = 
+           new ArrayList<Map.Entry<Edge, AtomicLong>>(edgeToClique.entrySet());
+        Collections.sort(list, new Comparator<Map.Entry<Edge, AtomicLong>>() {
+            @Override
+            public int compare( Map.Entry<Edge, AtomicLong> o1, Map.Entry<Edge, AtomicLong> o2 ) {
+                return -(( (Long)o1.getValue().get() ).compareTo( (Long)o2.getValue().get() ));
             }
-            java.util.Collections.shuffle(temp, rand);
-            for(int i = 0; i < numChanges; i++) {
-                String nei = temp.get(i);
-                int node1 = Integer.parseInt(Alg.vertexInG);
-                int node2 = Integer.parseInt(nei);
-                Edge edge = new Edge(Math.min(node1, node2), Math.max(node1, node2));
-                // if the edge is flipped in the previous round, then flip it back
-                if(edgeToIndex.get(edge) == null) {
-                    edge = flip(edge);
-                }
-                int index = edgeToIndex.get(edge);
-                applyChange(index);
-                changes.add(index);
+        });
+        for(Map.Entry<Edge, AtomicLong> entry : list) {
+            int change = edgeToIndex.get(entry.getKey());
+            applyChange(change);
+            if(hasVisited()) {
+                applyChange(change);
+            } else {
+                changes.add(change);
+                break;
             }
-        } while(hasVisited());
-        
+        }
         addHistory();
         return countCliques();
     }
@@ -393,11 +397,9 @@ public class Alg {
             }
             List<Integer> changes = new ArrayList<Integer>();
             
-            String saveNode = Alg.vertexInG;
-            List<String> saveNeis = Alg.neighbors;
-            long saveCliqueChange = Alg.maxCliqueChange;
+            ConcurrentMap<Edge, AtomicLong> save = edgeToClique;
             if(rand.nextInt(2) == 1) {
-                current = getRandomNeighbor(changes);
+                current = getSelectedNeighbor(changes);
             } else {
                 current = getAnyNeighbor(changes);
             }
@@ -409,9 +411,7 @@ public class Alg {
                 for(int change : changes) {
                     applyChange(change);
                 }
-                vertexInG = saveNode;
-                neighbors = saveNeis;
-                maxCliqueChange = saveCliqueChange;
+                edgeToClique = save;
                 accepted = false;
             } else {
                 accepted = true;

@@ -27,6 +27,7 @@ public class Round5Red extends Thread {
             }
             //MatrixGraph g = new MatrixGraph(Alg.client.getCurrentSize());
             AdjListGraph g = new AdjListGraph();
+            g.node = entry.getKey();
             for(Edge edge : entry.getValue()) {
                 g.addEdge(Integer.toString(edge.node1), Integer.toString(edge.node2));
                 //g.addEdge(edge.node1, edge.node2);
