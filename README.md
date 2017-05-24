@@ -14,8 +14,11 @@
             Server -> clique size
             Server -> current graph
 
-Loop Start
+Alpha Request
+            Client -> Alpha Request message
+            Server -> Alpha
 
+Loop Start
             Client -> exchange start request message
             Server -> exchange start confirmed message
             Server -> backup server addr ( ' ' if none )
