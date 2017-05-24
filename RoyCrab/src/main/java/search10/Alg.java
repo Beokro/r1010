@@ -103,8 +103,8 @@ public class Alg {
     private int currentSize;
     private double localGamma;
     private double globalGamma;
-    final private double gammaForSearch = 0.004;
-    final private double gammaForTunnel = 0.001;
+    final private double gammaForSearch = 0.006;
+    final private double gammaForTunnel = 0.003;
     private double betaBase;
     private double globalBetaBase;
     
@@ -121,7 +121,7 @@ public class Alg {
         localGamma = gammaForSearch;
         globalGamma = gammaForTunnel;
         betaBase = 10;
-        globalBetaBase = 20;
+        globalBetaBase = 10;
     }
 
     Edge flip(Edge input) {
@@ -262,7 +262,7 @@ public class Alg {
     }
     
     private double adjustBeta(long diff, double betaBase) {
-        return betaBase + (double)(diff)/0.1;
+        return betaBase + (double)(diff)*0.2;
     }
     
     private double fstun(double gamma, long cliques, long min) {
