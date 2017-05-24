@@ -40,10 +40,27 @@ std::vector<std::string> split(const std::string &s, char delim) {
 }
 
 vector< string > TcpClient::tcpRecv( int len ) {
+  int recvLen = 0;
   char * buffer = new char[ len + 1];
-  int recvLen = recv( sock, buffer, len, 0 );
-  vector< string > response = split( string( buffer ) , '\n' );;
-  return response;
+  vector< string > response;
+  if ( len > 1448 ) {
+    string temp = "";
+    recvLen = recv( sock, buffer, len, 0 );
+    buffer[ recvLen ] = 0;
+    temp += string( buffer );
+    while( temp.back() != '\n' ) {
+      memset( buffer, '\0', sizeof(char) * ( len + 1 ) );
+      recvLen = recv( sock, buffer, len, 0 );
+      buffer[ recvLen ] = 0;
+      temp += string( buffer );
+    }
+    response = split( temp , '\n' );
+  } else {
+    recvLen = recv( sock, buffer, len, 0 );
+    response = split( string( buffer ) , '\n' );
+    delete[] buffer;
+    return response;
+  }
 }
 
 void TcpClient::run() {
@@ -185,6 +202,14 @@ int** TcpClient::getGraph() {
   return graph;
 }
 
+double TcpClient::getAlpha() {
+  vector< string > message = { alphaRequest };
+  vector< string > response;
+  tcpSend( message );
+  response = tcpRecv( 20 );
+  return stod( response[ 0 ] );
+}
+
 void TcpClient::setCurrentGraph( int** graph ) {
   string temp( currentSize * currentSize, '0' );
   int index = 0;
@@ -203,6 +228,7 @@ void TcpClient::updateFromAlg( int problemSize, long cliqueSize, int** graph ) {
   this->currentSize = problemSize;
   this->cliqueSize = cliqueSize;
   setCurrentGraph( graph );
+  cout << "start exchange\n";
   try{
     startExchange();
   } catch( ... ) {
@@ -215,22 +241,23 @@ void TcpClient::updateFromAlg( int problemSize, long cliqueSize, int** graph ) {
 
 int main() {
   TcpClient test( "127.0.0.1", 7788 );
-  int ** graph = new int*[ 15 ];
+  int ** graph = new int*[ 305 ];
   int cliqueSize = 1000;
-  for ( int i = 0; i < 15; i++ ) {
-    graph[ i ] = new int[ 15 ];
+  for ( int i = 0; i < 305; i++ ) {
+    graph[ i ] = new int[ 305 ];
     graph[ i ][ 2 ] = 1;
   }
   test.run();
 
   while ( true ) {
-    test.updateFromAlg( 15, cliqueSize, graph );
+    test.updateFromAlg( 305, cliqueSize, graph );
+    cout << test.getAlpha() << endl;
     cliqueSize -= 3;
     sleep( 5 );
   }
 
 
-  for ( int i = 0; i < 15; i++ ) {
+  for ( int i = 0; i < 305; i++ ) {
     delete[] graph[ i ];
   }
   delete[] graph;
