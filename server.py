@@ -106,6 +106,11 @@ def dfa(data, scale_lim = [5,9], scale_dens = 0.25):
     coeff = np.polyfit(np.log2(scales), np.log2(fluct), 1)
     return coeff[0]
 
+def chunks(l, n):
+    """Yield successive n-sized chunks from l."""
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
+
 class TcpServer( object ):
     def __init__( self, host, port, destHost, destPort, timeout, logDir, backup, currentSize, readFromTemp ):
         self.host = host
@@ -226,9 +231,9 @@ class TcpServer( object ):
             appendNum = self.currentSize - self.lastResult
             print 'start wrap'
             if useLastGraphAsBase:
-                glists = textwrap.wrap( self.lastGraph ,  self.lastResult )
+                glists = list( chunks( self.lastGraph ,  self.lastResult ) )
             else:
-                glists = textwrap.wrap( self.currentGraph ,  self.currentSize - 1 )
+                glists = list( chunks( self.currentGraph ,  self.currentSize - 1 ) )
             print 'end wrap'
             for g in glists:
                 res += g + generateRandomNumber( appendNum )
