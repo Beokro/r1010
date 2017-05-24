@@ -57,6 +57,7 @@ vector< string > TcpClient::tcpRecv( int len ) {
     response = split( temp , '\n' );
   } else {
     recvLen = recv( sock, buffer, len, 0 );
+    buffer[ recvLen ] = 0;
     response = split( string( buffer ) , '\n' );
   }
   delete[] buffer;
