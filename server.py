@@ -112,7 +112,7 @@ def chunks(l, n):
         yield l[i:i + n]
 
 class TcpServer( object ):
-    def __init__( self, host, port, destHost, destPort, timeout, logDir, backup, currentSize, readFromTemp ):
+    def __init__( self, host, port, destHost, destPort, timeout, logDir, backup, currentSize, readFromTemp, generate ):
         self.host = host
         self.port = port
         self.destHost = destHost
@@ -141,6 +141,14 @@ class TcpServer( object ):
         self.cliqueSize = sys.maxsize
         self.counter = 0
         self.lockID = '-1'
+        if generate:
+            self.recordAnswer()
+            self.lastResult = currentSize
+            self.currentSize += 1
+            self.currentGraph = self.defaultGraph()
+            self.cleanLogFile()
+            print 'new problem size = ' + str( self.currentSize )
+            self.doLogging( 'answer found, update problem size', '0', True )
         self.sock = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
         self.sock.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1 )
         self.sock.bind( ( self.host, self.port ) )
@@ -713,7 +721,7 @@ class TcpServer( object ):
         # case A_0.1, increment the problem size, include tranmission complete message
         if clientCliqueSize == 0:
             self.recordAnswer()
-            self.sendAnswerWithEmail()
+            # self.sendAnswerWithEmail()
             print self.currentSize
             print self.currentGraph
             self.currentSize += 1
@@ -861,10 +869,11 @@ def usage():
 
 if __name__ == "__main__":
     try:
-        opts, args = getopt.getopt( sys.argv[ 1: ], "p:ht:l:a:d:bc:n",
+        opts, args = getopt.getopt( sys.argv[ 1: ], "p:ht:l:a:d:bc:ng",
                                     [ "port=", "help", "timeout=", "log=",
                                       "addrdest=", "destport", "backup",
-                                      "currentSize=", "notreadFromTemp" ] )
+                                      "currentSize=", "notreadFromTemp",
+                                      "generate" ] )
     except getopt.GetoptError as err:
         print str( err )
         usage()
@@ -878,6 +887,7 @@ if __name__ == "__main__":
     backup = False
     currentSize = -1
     readFromTemp = True
+    generate = False
 
     for o, a in opts:
         if o in ( "-h", "--help" ):
@@ -899,6 +909,8 @@ if __name__ == "__main__":
             currentSize = int( a )
         elif o in ( "-n", "--notreadFromTemp" ):
             readFromTemp = False
+        elif o in ( "-g", "--generate" ):
+            generate = True
         else:
             assert False, "unhandled option"
 
@@ -906,7 +918,7 @@ if __name__ == "__main__":
         logDir = 'backup.log'
 
     try:
-        temp = TcpServer( '', port, destIP, destPort, timeout, logDir, backup, currentSize, readFromTemp )
+        temp = TcpServer( '', port, destIP, destPort, timeout, logDir, backup, currentSize, readFromTemp, generate )
         temp.listen()
     except KeyboardInterrupt:
         print '^C received, shutting down the web server'
