@@ -226,6 +226,11 @@ public class Alg {
                 
                 long Dcliques = countCliquesSubFlip(e) - entry.getValue().get();
                 bestOptions.add(new ChangeAndResult(change, Dcliques));
+                if(Dcliques < 0) {
+                    synchronized(Alg.lock1) {
+                        edgeToClique.clear();
+                    }
+                }
             }
             synchronized(Alg.alarm) {
                 Alg.alarm.notify();
