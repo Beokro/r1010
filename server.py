@@ -200,7 +200,7 @@ class TcpServer( object ):
             content = f.readlines()
         content = [ x.strip() for x in content ]
         listSize = len( content )
-        lastResult =  content[ listSize - 4 ]
+        lastResult =  int( content[ listSize - 4 ] )
         lastGraph = content[ listSize - 3 ]
         with open( newAnswerFileName, "w+" ) as myfile:
             myfile.write( lastResult + '\n' )
@@ -743,7 +743,7 @@ class TcpServer( object ):
             size = str( self.currentSize )
         if graph == ' ':
             graph = self.currentGraph
-        self.lastResult = size
+        self.lastResult = self.currentSize
         self.lastGraph = graph
 
         with open( answerFileName, "a+" ) as myfile:
