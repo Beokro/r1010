@@ -173,6 +173,7 @@ class TcpServer( object ):
         self.lastGraph = content[ listSize - 3 ]
 
         if self.readFromTemp:
+            self.lastResult = self.currentSize
             return self.getTempGraph()
 
         # server knows the currentSize
