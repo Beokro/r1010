@@ -194,6 +194,22 @@ public class Alg {
         return notAccept(globalBetaBase, globalGamma, cliques, min, min);
     }
     
+    private boolean useServer(int currentSize, long lastTime, long thisTime) {
+        if(currentSize < client.getCurrentSize()) { // move on to next step
+            return true;
+        }
+        if(thisTime == 0) { // someone has got 0
+            return true;
+        }
+        if(thisTime < lastTime) { // server not stuck and is not 0
+            if(current.get() > thisTime) { // and ours is worse than server's
+                return true;
+            }
+        }
+        // else server is stuck so we use our graph
+        return false;
+    }
+    
     class AlgThread extends Thread {
         ConcurrentMap<Edge, AtomicLong> edgeToClique;
         long current;
@@ -248,6 +264,7 @@ public class Alg {
         while(current.get() != 0) {
             bestOptions = new ConcurrentSkipListSet<ChangeAndResult>(new ChangeAndResult());
             current = new AtomicLong(countCliques());
+            addHistory();
             client.updateFromAlg(currentSize, current.get(), graph2d);
             List<Thread> workers = new ArrayList<Thread>();
             for(int i = 0; i < cores; i++) {
@@ -280,19 +297,13 @@ public class Alg {
                 }
                 applyChange(best.change);
             }
-            addHistory();
             long lastTime = client.getCliqueSize();
             client.updateFromAlg(currentSize, current.get(), graph2d);
             long thisTime = client.getCliqueSize();
             
-            if(lastTime > thisTime) { // server does not get stuck
-                if(current.get() > thisTime) { // and ours is worse than server's
-                    return;
-                }
-            } else { // server does get stuck
-                // just use the current graph, which already 
-                // has the best change so far to explore
-            }
+            if(useServer(currentSize, lastTime, thisTime)) {
+                return;
+            } 
         }
     }
     
