@@ -10,8 +10,11 @@ import java.rmi.registry.Registry;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicLong;
 
 class NodeDeg {
@@ -98,6 +101,39 @@ class NodeDegPair {
     }
 }
 
+class ChangeAndResult implements Comparator<ChangeAndResult> {
+    int change;
+    long Dcliques;
+    
+    ChangeAndResult() {}
+    
+    ChangeAndResult(int change, long Dcliques){
+        this.change = change;
+        this.Dcliques = Dcliques;
+    }
+    
+    @Override
+    public boolean equals(Object o) {
+        if(!(o instanceof NodeDegPair)) {
+            return false;
+        }
+        ChangeAndResult temp = (ChangeAndResult)o;
+        return temp.change == change;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 53 * hash + this.change;
+        return hash;
+    }
+    
+    @Override
+    public int compare(ChangeAndResult a, ChangeAndResult b) {
+        return (int)(a.Dcliques - b.Dcliques);
+    }
+}
+
 public class Alg {
     private String serverIp;
     private String bloomFilterIp;
@@ -109,11 +145,12 @@ public class Alg {
     static Object lock2 = new Object();
     static Object alarm = new Object();
     static AtomicLong current;
+    static Set<ChangeAndResult> bestOptions;
     static int change;
     double globalBetaBase = 10;
     double globalGamma = 0.006;
     
-    static RemoteBloomFilter history;
+    static BloomFilter history = new BloomFilter();
     static ConcurrentMap<Edge, AtomicLong> edgeToClique =
                                     new ConcurrentHashMap<Edge, AtomicLong>();
 
@@ -125,7 +162,7 @@ public class Alg {
     }
     
     private double adjustBeta(long diff, double betaBase) {
-        return betaBase + (double)(diff)*0.1;
+        return betaBase + (double)(diff)*0.2;
     }
     
     private double fstun(double gamma, long cliques, long min) {
@@ -172,27 +209,23 @@ public class Alg {
                 int change = -1;
                 Edge e = null;
                 synchronized(Alg.lock1) {
-                    if(edgeToClique.isEmpty() || Alg.change != -1) {
+                    if(edgeToClique.isEmpty()) {
                         break;
                     }
                     entry = edgeToClique.entrySet().iterator().next();
                     edgeToClique.remove(entry.getKey());
                     e = entry.getKey();
                     change = edgeToIndex.get(e);
+                    applyChange(change);
+                    if(hasVisited()) {
+                        applyChange(change);
+                        continue;
+                    }
+                    applyChange(change);
                 }
                 
                 long Dcliques = countCliquesSubFlip(e) - entry.getValue().get();
-
-                synchronized(Alg.lock2) {
-                    if(current + Dcliques < Alg.current.get()) {
-                        Alg.change = change;
-                        Alg.current.set(current + Dcliques);
-                        synchronized(Alg.alarm) {
-                            Alg.alarm.notify();
-                        }
-                        return;
-                    }
-                }
+                bestOptions.add(new ChangeAndResult(change, Dcliques));
             }
             synchronized(Alg.alarm) {
                 Alg.alarm.notify();
@@ -203,12 +236,14 @@ public class Alg {
     public void start() {
         graph2d = client.getGraph();
         currentSize = client.getCurrentSize();
+        history.setCurrentSize(currentSize);
         createGraph();
         int cores = Runtime.getRuntime().availableProcessors();
         current = new AtomicLong(Long.MAX_VALUE);
-        boolean isStuck = false;
         while(current.get() != 0) {
+            bestOptions = new ConcurrentSkipListSet<ChangeAndResult>(new ChangeAndResult());
             current = new AtomicLong(countCliques());
+            client.updateFromAlg(currentSize, current.get(), graph2d);
             List<Thread> workers = new ArrayList<Thread>();
             for(int i = 0; i < cores; i++) {
                 workers.add(new AlgThread(edgeToClique, current));
@@ -223,24 +258,35 @@ public class Alg {
             } catch(InterruptedException e) {
                 e.printStackTrace();
             }
-            
-            if(change != -1) {
-                for(Thread t : workers) {
-                    try {
-                        t.join();
-                    } catch(InterruptedException e) {
-                        e.printStackTrace();
-                    }
+            for(Thread t : workers) {
+                try {
+                    t.join();
+                } catch(InterruptedException e) {
+                    e.printStackTrace();
                 }
-                applyChange(change);
-            } else {
-                isStuck = true;
             }
+            Iterator<ChangeAndResult> it = bestOptions.iterator();
+            while(it.hasNext()) {
+                ChangeAndResult best = it.next();
+                applyChange(best.change);
+                if(!hasVisited()) {
+                    current.set(current.get() + best.Dcliques);
+                    break;
+                }
+                applyChange(best.change);
+            }
+            addHistory();
+            long lastTime = client.getCliqueSize();
             client.updateFromAlg(currentSize, current.get(), graph2d);
+            long thisTime = client.getCliqueSize();
             
-            // should use server's graph
-            if(useClient(currentSize, current.get()) || isStuck) {
-                return;
+            if(lastTime > thisTime) { // server does not get stuck
+                if(current.get() > thisTime) { // and ours is worse than server's
+                    return;
+                }
+            } else { // server does get stuck
+                // just use the current graph, which already 
+                // has the best change so far to explore
             }
         }
     }
@@ -272,35 +318,11 @@ public class Alg {
     }
 
     private void addHistory() {
-        try {
-            history.addHistory(graph2d);
-        } catch(RemoteException e) {
-            try{
-                Registry registry = LocateRegistry.getRegistry(
-                        bloomFilterIp, RemoteBloomFilter.PORT);
-                history= (RemoteBloomFilter) 
-                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
-            } catch(Exception nima) {
-
-            }
-        }
+        history.addHistory(graph2d);
     }
     
     private boolean hasVisited() {
-        boolean result = false;
-        try {
-            result = history.inHistory(graph2d);
-        } catch(RemoteException e) {
-            try{
-                Registry registry = LocateRegistry.getRegistry(
-                        bloomFilterIp, RemoteBloomFilter.PORT);
-                history= (RemoteBloomFilter) 
-                    registry.lookup(RemoteBloomFilter.SERVICE_NAME);
-            } catch(Exception nima) {
-
-            }
-        }
-        return result;
+        return history.inHistory(graph2d);
     }
 
     private void createGraph() {
@@ -453,36 +475,13 @@ public class Alg {
 
         Alg.client = new TcpClient(serverIp, 7788);
 
-        try 
-        { 
-            Registry registry = LocateRegistry.getRegistry(
-                    bloomFilterIp, RemoteBloomFilter.PORT);
-            history = (RemoteBloomFilter)
-                registry.lookup(RemoteBloomFilter.SERVICE_NAME);
-        } 
-        catch (Exception e) 
-        { 
-            e.printStackTrace(); 
-        } 
-
         System.out.println("Alg start");
         System.out.println(Runtime.getRuntime().availableProcessors() + " processors");
         while(true) {
             excalibur = new Alg(serverIp, bloomFilterIp);
             excalibur.start();
-            try {
-                if(history.getCurrentSize() < client.getCurrentSize()) {
-                    history.refresh(client.getCurrentSize());
-                }
-            } catch(RemoteException e) {
-                try{
-                    Registry registry = LocateRegistry.getRegistry(
-                            bloomFilterIp, RemoteBloomFilter.PORT);
-                    history= (RemoteBloomFilter) 
-                        registry.lookup(RemoteBloomFilter.SERVICE_NAME);
-                } catch(Exception nima) {
-
-                }
+            if(history.getCurrentSize() < client.getCurrentSize()) {
+                history.refresh(client.getCurrentSize());
             }
         }
     }
