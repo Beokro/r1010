@@ -105,26 +105,146 @@ public class Alg {
     public Map<Edge, Integer> edgeToIndex;
     public int[][] graph2d;
     private int currentSize;
-    private double localGamma;
-    private double globalGamma;
-    final private double gammaForSearch = 0.006;
-    final private double gammaForTunnel = 0.003;
-    private double betaBase;
-    private double globalBetaBase;
+    static Object lock1 = new Object();
+    static Object lock2 = new Object();
+    static Object alarm = new Object();
+    static AtomicLong current;
+    static int change;
+    double globalBetaBase = 10;
+    double globalGamma = 0.006;
     
     static RemoteBloomFilter history;
-    static ConcurrentMap<Edge, AtomicLong> edgeToClique;
+    static ConcurrentMap<Edge, AtomicLong> edgeToClique =
+                                    new ConcurrentHashMap<Edge, AtomicLong>();
 
     Alg(String serverIp, String bloomFilterIp) {
         edgeToIndex = new HashMap<Edge, Integer>();
         this.serverIp = serverIp;
         this.bloomFilterIp = bloomFilterIp;
-        localGamma = gammaForSearch;
-        globalGamma = gammaForTunnel;
-        betaBase = 10;
-        globalBetaBase = 10;
+        change = -1;
     }
+    
+    private double adjustBeta(long diff, double betaBase) {
+        return betaBase + (double)(diff)*0.1;
+    }
+    
+    private double fstun(double gamma, long cliques, long min) {
+        return 1 - Math.pow(Math.E, -gamma*(cliques-min));
+    }
+    
+    private double acceptProb(double betaBase, double gamma, long current, long last, long localMin) {
+        double beta = adjustBeta(current - localMin, betaBase);
+        return Math.pow(Math.E,
+                -beta*(fstun(gamma, current, localMin) - fstun(gamma, last, localMin)));
+    }
+    
+    private boolean notAccept(double betaBase, double gamma, long current, long last, long localMin) {
+        if(current <= last) {
+            return false;
+        }
+        Random rand = new Random(System.currentTimeMillis());
+        return rand.nextDouble() > acceptProb(betaBase, gamma, current, last, localMin);
+    }
+    
+    private boolean useClient(int currentSize, long cliques) {
+        
+        if(currentSize < client.getCurrentSize()) {
+            return true;
+        }
+        
+        long min = client.getCliqueSize();
+        
+        return notAccept(globalBetaBase, globalGamma, cliques, min, min);
+    }
+    
+    class AlgThread extends Thread {
+        ConcurrentMap<Edge, AtomicLong> edgeToClique;
+        long current;
+        AlgThread(ConcurrentMap<Edge, AtomicLong> edgeToClique, AtomicLong current) {
+            this.edgeToClique = edgeToClique;
+            this.current = current.get();
+        }
+        
+        @Override
+        public void run() {
+            while(true) {
+                Map.Entry<Edge, AtomicLong> entry = null;
+                int change = -1;
+                Edge e = null;
+                synchronized(Alg.lock1) {
+                    if(edgeToClique.isEmpty() || Alg.change != -1) {
+                        break;
+                    }
+                    entry = edgeToClique.entrySet().iterator().next();
+                    edgeToClique.remove(entry.getKey());
+                    e = entry.getKey();
+                    change = edgeToIndex.get(e);
+                }
+                
+                long Dcliques = countCliquesSubFlip(e) - entry.getValue().get();
 
+                synchronized(Alg.lock2) {
+                    if(current + Dcliques < Alg.current.get()) {
+                        Alg.change = change;
+                        Alg.current.set(current + Dcliques);
+                        synchronized(Alg.alarm) {
+                            Alg.alarm.notify();
+                        }
+                        return;
+                    }
+                }
+            }
+            synchronized(Alg.alarm) {
+                Alg.alarm.notify();
+            }
+        }
+    }
+    
+    public void start() {
+        graph2d = client.getGraph();
+        currentSize = client.getCurrentSize();
+        createGraph();
+        int cores = Runtime.getRuntime().availableProcessors();
+        current = new AtomicLong(Long.MAX_VALUE);
+        boolean isStuck = false;
+        while(current.get() != 0) {
+            current = new AtomicLong(countCliques());
+            List<Thread> workers = new ArrayList<Thread>();
+            for(int i = 0; i < cores; i++) {
+                workers.add(new AlgThread(edgeToClique, current));
+            }
+            for(Thread t : workers) {
+                t.start();
+            }
+            try{
+                synchronized(alarm) {
+                    alarm.wait();
+                }
+            } catch(InterruptedException e) {
+                e.printStackTrace();
+            }
+            
+            if(change != -1) {
+                for(Thread t : workers) {
+                    try {
+                        t.join();
+                    } catch(InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                applyChange(change);
+            } else {
+                isStuck = true;
+            }
+            client.updateFromAlg(currentSize, current.get(), graph2d);
+            
+            // should use server's graph
+            if(useClient(currentSize, current.get()) || isStuck) {
+                return;
+            }
+        }
+    }
+    
     static void recordEdges(int node1, String node2, int[] indexes, List<String> neighbors) {
         List<Integer> nodes =  new ArrayList<Integer>();
         nodes.add(node1);
@@ -267,56 +387,7 @@ public class Alg {
         return cliques;
     }
     
-    private boolean useClient(int currentSize, long cliques) {
-        
-        if(currentSize < client.getCurrentSize()) {
-            return true;
-        }
-        
-        long min = client.getCliqueSize();
-        
-        return notAccept(globalBetaBase, globalGamma, cliques, min, min);
-    }
-    
-    private double adjustBeta(long diff, double betaBase) {
-        return betaBase + (double)(diff)*0.2;
-    }
-    
-    private double fstun(double gamma, long cliques, long min) {
-        return 1 - Math.pow(Math.E, -gamma*(cliques-min));
-    }
-    
-    private double acceptProb(double betaBase, double gamma, long current, long last, long localMin) {
-        double beta = adjustBeta(current - localMin, betaBase);
-        return Math.pow(Math.E,
-                -beta*(fstun(gamma, current, localMin) - fstun(gamma, last, localMin)));
-    }
-    
-    private boolean notAccept(double betaBase, double gamma, long current, long last, long localMin) {
-        if(current <= last) {
-            return false;
-        }
-        Random rand = new Random(System.currentTimeMillis());
-        return rand.nextDouble() > acceptProb(betaBase, gamma, current, last, localMin);
-    }
-    
-    private void adjustLocalGamma(List<Double> data) {
-        if(data.size() < 50) {
-            return;
-        }
-        DFA dfa = new DFA(data);
-        double alpha = dfa.dfa();
-        
-        if(alpha > 0.75) {
-            // local entrapment detected
-            localGamma = gammaForTunnel;
-        } else {
-            localGamma = gammaForSearch;
-        }
-        data.clear();
-    }
-    
-    private void applyChange(int index) {
+    synchronized private void applyChange(int index) {
         Edge edge = Round1Map.graph.get(index);
         Round1Map.graph.put(index, flip(edge)); 
         edgeToIndex.put(flip(edge), index);
@@ -327,100 +398,46 @@ public class Alg {
         graph2d[edge.node1][edge.node2] = Math.abs(graph2d[edge.node1][edge.node2] - 1);
     }
     
-    private long getAnyNeighbor(List<Integer> changes) {
-        Random rand = new Random(System.currentTimeMillis());
-        int numChanges = rand.nextInt(currentSize / 30) + 1;
-        long bestCliques = client.getCliqueSize();
-        int bestChange = -1;
-        ConcurrentMap<Edge, AtomicLong> save = edgeToClique;
-        for(int i = 0; i < numChanges; i++) {
-            int index = rand.nextInt(Round1Map.graph.size());
-            applyChange(index);
-            if(hasVisited()) {
-                applyChange(index);
-                continue;
-            }
-            addHistory();
-            long current = countCliques();
-            if(current < bestCliques) {
-                bestCliques = current;
-                bestChange = index;
-                save = edgeToClique;
-            }
-            applyChange(index);
-        }
-        edgeToClique = save;
-        if(bestChange != -1) {
-            applyChange(bestChange);
-            changes.add(bestChange);
-        }
-        return bestCliques;
-    }
-    
-    private long getSelectedNeighbor(List<Integer> changes) {
-        List<Map.Entry<Edge, AtomicLong>> list = 
-           new ArrayList<Map.Entry<Edge, AtomicLong>>(edgeToClique.entrySet());
-        Collections.sort(list, new Comparator<Map.Entry<Edge, AtomicLong>>() {
-            @Override
-            public int compare( Map.Entry<Edge, AtomicLong> o1, Map.Entry<Edge, AtomicLong> o2 ) {
-                return -(( (Long)o1.getValue().get() ).compareTo( (Long)o2.getValue().get() ));
-            }
-        });
-        for(Map.Entry<Edge, AtomicLong> entry : list) {
-            int change = edgeToIndex.get(entry.getKey());
-            applyChange(change);
-            if(hasVisited()) {
-                applyChange(change);
-            } else {
-                changes.add(change);
-                break;
-            }
-        }
-        addHistory();
-        return countCliques();
-    }
-    
-    public void start() {
-
-        graph2d = client.getGraph();
-        currentSize = client.getCurrentSize();
-        createGraph();
-        long localMin = countCliques();
-        client.updateFromAlg(currentSize, localMin, graph2d);
-        long lastCliques = localMin;
-        long current = localMin;
-        boolean accepted = true;
-        Random rand = new Random(System.currentTimeMillis());
-        while(localMin != 0) {
-            if(accepted) {
-                lastCliques = current;
-            }
-            List<Integer> changes = new ArrayList<Integer>();
-            
-            ConcurrentMap<Edge, AtomicLong> save = edgeToClique;
-            if(rand.nextInt(2) == 1) {
-                current = getSelectedNeighbor(changes);
-            } else {
-                current = getAnyNeighbor(changes);
-            }
-            
-            client.updateFromAlg(currentSize, current, graph2d);
-            localMin = Math.min(lastCliques, Math.min(localMin, current));
-            if(notAccept(betaBase, localGamma, current, lastCliques, localMin)) {
-                // do changes again to undo them
-                for(int change : changes) {
-                    applyChange(change);
+    private long countCliquesSubFlip(Edge edge) {
+        int currentSize = client.getCurrentSize();
+        Edge flip = flip(edge);
+        List<Integer> intersect = new ArrayList<Integer>();
+        if(flip.node1 >= currentSize) {
+            for(int i = currentSize; i < currentSize * 2; i++) {
+                Edge test1 = new Edge(Math.min(flip.node1, i), Math.max(flip.node1, i));
+                Edge test2 = new Edge(Math.min(flip.node2, i), Math.max(flip.node2, i));
+                if(edgeToIndex.get(test1) != null && edgeToIndex.get(test2) != null) {
+                    intersect.add(i);
                 }
-                edgeToClique = save;
-                accepted = false;
-            } else {
-                accepted = true;
             }
-            
-            if(useClient(currentSize, localMin)) {
-                return;
+        } else {
+            for(int i = 0; i < currentSize; i++) {
+                Edge test1 = new Edge(Math.min(flip.node1, i), Math.max(flip.node1, i));
+                Edge test2 = new Edge(Math.min(flip.node2, i), Math.max(flip.node2, i));
+                if(edgeToIndex.get(test1) != null && edgeToIndex.get(test2) != null) {
+                    intersect.add(i);
+                }
             }
         }
+        AdjListGraph g = new AdjListGraph();
+        for(int i = 0; i < intersect.size(); i++) {
+            for(int j = i + 1; j < intersect.size(); j++) {
+                int node1 = intersect.get(i);
+                int node2 = intersect.get(j);
+                if(node1 >= client.getCurrentSize()) {
+                    node1 -= client.getCurrentSize();
+                    node2 -= client.getCurrentSize();
+                    if(graph2d[Math.min(node1, node2)][Math.max(node1, node2)] == 0) {
+                        g.addEdge(Integer.toString(node1 + client.getCurrentSize()), Integer.toString(node2 + client.getCurrentSize()));
+                    }
+                } else {
+                    if(graph2d[Math.min(node1, node2)][Math.max(node1, node2)] == 1) {
+                        g.addEdge(Integer.toString(node1), Integer.toString(node2));
+                    }
+                }
+            }
+        }
+        return g.countCliquesOfSize(8);
     }
 
     public static void main( String[] args ) {

@@ -21,7 +21,8 @@ public class AdjListGraph {
 
 	private long unorientedSize=0;
 	private long orientedSize=0;
-        public int node;
+        public int node = -1;
+        public Edge edge = null;
 
 	HashMap<String, HashSet<String>> graph = new HashMap<String, HashSet<String>>();  
 	HashMap<String, Integer> degrees =new HashMap<String, Integer>();
@@ -150,8 +151,10 @@ public class AdjListGraph {
 								fixing++;
 								indexes[fixing] = indexes[fixing-1]+1;
 							} else {
-								countRunning++;
-                                                                Alg.recordEdges(this.node, a, indexes, neighbors);
+                                                                countRunning++;
+                                                                if(this.node != -1) {
+                                                                    Alg.recordEdges(this.node, a, indexes, neighbors);
+                                                                }
 								indexes[fixing]++;
 							}
 							if (!(indexes[fixing]<(neighbors.size()-(indexes.length  - fixing - 1)))) {
