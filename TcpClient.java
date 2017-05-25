@@ -32,6 +32,7 @@ public class TcpClient {
     static final String tranmissionCompleteMessage = "complete";
     static final String readFailedMessage = "readFailed";
     static final String clientClaimMessage = "claimClient";
+    static final String alphaRequest = "alphaReq";
 
     private String destHost;
     private int destPort;
@@ -59,6 +60,13 @@ public class TcpClient {
 
     public int[][] getGraph() {
         return translateGraphToArray( currentGraph );
+    }
+
+    public double getAlpha() {
+        String message;
+        write( new String[] { alphaRequest } );
+        message = read();
+        return Double.parseDouble( message );
     }
 
     public boolean connectToHost() {
@@ -286,7 +294,7 @@ public class TcpClient {
         Random rand = new Random();
         int reduce = 0;
         int currentClique = 500;
-        int [][] graph = new int[ 5 ][ 5 ];
+        int [][] graph = new int[ 15 ][ 15 ];
         client.run();
         /*
           regualr test
@@ -298,11 +306,11 @@ public class TcpClient {
         client.updateFromAlg( 5, 0, "0000000000000000000000000" );
         client.updateFromAlg( 6, 100, "000000000000000000000000000000000000" );
         */
-        client.updateFromAlg( 5, currentClique, graph );
+        client.updateFromAlg( 15, currentClique, graph );
 
         while ( true ) {
             try{
-                TimeUnit.SECONDS.sleep( 5 );
+                TimeUnit.SECONDS.sleep( 2 );
             } catch ( Exception e ) {
                 return;
             }
@@ -311,9 +319,8 @@ public class TcpClient {
             if ( currentClique <= 0 ) {
                 break;
             }
-            // client.updateFromAlg( 5, currentClique, graph );
-            client.updateFromAlg( 5, 0, graph );
-            break;
+            client.updateFromAlg( 15, currentClique, graph );
+            System.out.println( client.getAlpha() );
         }
 
         client.close();

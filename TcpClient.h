@@ -28,6 +28,7 @@ private:
   const string tranmissionCompleteMessage = "complete";
   const string readFailedMessage = "readFailed";
   const string clientClaimMessage = "claimClient";
+  const string alphaRequest = "alphaReq";
   string destHost;
   int destPort;
   int currentSize = 0;
@@ -56,7 +57,7 @@ public:
   long getCliqueSize() { return cliqueSize; }
   int** getGraph();
   void updateFromAlg( int problemSize, long cliqueSize, int** graph );
-
+  double getAlpha();
 };
 
 TcpClient::TcpClient( string destHost, int destPort ) {

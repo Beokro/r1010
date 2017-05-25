@@ -9,6 +9,7 @@ import random
 import textwrap
 import os.path
 import smtplib
+import numpy as np
 from random import randint
 from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
@@ -25,6 +26,7 @@ clientClaimMessage = 'claimClient'
 serverClaimMessage = 'claimServer'
 syncRequestMessage = 'syncReq'
 syncCompleteMessage = 'syncCom'
+alphaRequest = 'alphaReq'
 firstBackup = 'first'
 normalBackup = 'normal'
 lastAnswerRequest = 'lastAnsReq'
@@ -83,6 +85,31 @@ def generateRandomNumber( n ):
         tempList.append( str( randint( 0, 1 ) ) )
     return ''.join( tempList )
 
+def calc_rms(x, scale):
+    shape = (x.shape[0]//scale, scale)
+    X = np.lib.stride_tricks.as_strided(x,shape=shape)
+    scale_ax = np.arange(scale)
+    rms = np.zeros(X.shape[0])
+    for e, xcut in enumerate(X):
+        coeff = np.polyfit(scale_ax, xcut, 1)
+        xfit = np.polyval(coeff, scale_ax)
+        rms[e] = np.sqrt(np.mean((xcut-xfit)**2))
+    return rms
+
+def dfa(data, scale_lim = [5,9], scale_dens = 0.25):
+    data = np.frombuffer(data)
+    cumSum = np.cumsum(data - np.mean(data))
+    scales = (2**np.arange(scale_lim[0], scale_lim[1], scale_dens)).astype(np.int)
+    fluct = np.zeros(len(scales))
+    for index, item in enumerate(scales):
+        fluct[index] = np.mean(np.sqrt(calc_rms(cumSum, item)**2))
+    coeff = np.polyfit(np.log2(scales), np.log2(fluct), 1)
+    return coeff[0]
+
+def chunks(l, n):
+    """Yield successive n-sized chunks from l."""
+    for i in range(0, len(l), n):
+        yield l[i:i + n]
 
 class TcpServer( object ):
     def __init__( self, host, port, destHost, destPort, timeout, logDir, backup, currentSize, readFromTemp ):
@@ -104,6 +131,9 @@ class TcpServer( object ):
         self.lastResult = -1
         self.lastGraph = ' '
         self.currentSize = currentSize
+        self.alpha = -1
+        self.cliqueRecord = []
+        self.cliqueRecordCount = 0
         if self.backup:
             self.currentGraph = ' '
         else:
@@ -201,15 +231,29 @@ class TcpServer( object ):
             appendNum = self.currentSize - self.lastResult
             print 'start wrap'
             if useLastGraphAsBase:
-                glists = textwrap.wrap( self.lastGraph ,  self.lastResult )
+                glists = list( chunks( self.lastGraph ,  self.lastResult ) )
             else:
-                glists = textwrap.wrap( self.currentGraph ,  self.currentSize - 1 )
+                glists = list( chunks( self.currentGraph ,  self.currentSize - 1 ) )
             print 'end wrap'
             for g in glists:
                 res += g + generateRandomNumber( appendNum )
             res += generateRandomNumber( self.currentSize )
             print 'generation complete'
             return res
+
+    def appendCliqueRecord( self, clique ):
+        self.cliqueRecord.append( clique )
+        self.cliqueRecordCount += 1
+        if self.cliqueRecordCount == 1000:
+            self.doLogging( 'update alpha ', ' ', isServer = True )
+            try:
+                self.alpha = dfa( self.cliqueRecord )
+            except:
+                self.cliqueRecord = []
+                self.cliqueRecordCount = 0
+            print 'new alpha = ' + str( self.alpha )
+            self.cliqueRecord = []
+            self.cliqueRecordCount = 0
 
     def listen( self ):
         self.sock.listen( 200 )
@@ -593,11 +637,17 @@ class TcpServer( object ):
     def handleClique( self, data, client, clientID ):
         global exchangeStartMessage
         global exchangeConfirmedMessage
+        global alphaRequest
         # matrix received is at most size * size big, give some extra jic
         recvSize = 0
         clientProblemSize = -1
         clientCliqueSize = -1
         message = ''
+
+        if data == alphaRequest:
+            # just respond with the aphs
+            self.sendPacket( client, [ self.alpha ] )
+            return
 
         # make sure the data server receiviing is what it is expecting
         if data != exchangeStartMessage:
@@ -615,7 +665,7 @@ class TcpServer( object ):
                         ' clique: ' + str( clientCliqueSize ), clientID )
 
         self.getLock( clientID )
-
+        self.appendCliqueRecord( clientCliqueSize )
         # case B
         if clientProblemSize != self.currentSize:
             self.handleDifferentProblemSize( client, clientID )
