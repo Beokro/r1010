@@ -7,6 +7,9 @@ import java.lang.NullPointerException;
 import java.net.Socket;
 import java.util.concurrent.TimeUnit;
 import java.util.Random;
+import java.util.concurrent.*;
+import java.util.*;
+import java.io.*;
 
 
 // look at the example at the main
@@ -38,6 +41,8 @@ public class TcpClient {
     private int destPort;
     private int currentSize = 0;
     private long cliqueSize = Long.MAX_VALUE;
+    private ConcurrentHashMap< Integer, ConcurrentHashMap< UUID, Integer > > currentMap;
+    private boolean validMap = false;
     private String currentGraph = " ";
     private String backupAddr = " ";
     private int backupPort = -1;
@@ -62,11 +67,48 @@ public class TcpClient {
         return translateGraphToArray( currentGraph );
     }
 
+    public boolean getValidMap() {
+        return validMap;
+    }
+
+    public ConcurrentHashMap< Integer, ConcurrentHashMap< UUID, Integer > > getMap() {
+        return currentMap;
+    }
+
     public double getAlpha() {
         String message;
         write( new String[] { alphaRequest } );
         message = read();
         return Double.parseDouble( message );
+    }
+
+    private void readMap() {
+        String val = read();
+        if ( val.equals( "1" ) ) {
+            System.out.println( "get 1 for read\n" );
+            validMap = true;
+            try {
+                this.currentMap = ( ConcurrentHashMap< Integer,
+                                    ConcurrentHashMap< UUID, Integer > > )fromString( read() );
+            } catch( IOException i ) {
+                System.out.println( "IOExpcetion fromString or cast to map failed" );
+                this.currentMap = null;
+                validMap = false;
+                return;
+            } catch ( ClassNotFoundException i ) {
+                System.out.println( "ClassNotFoundExpcetion fromString or cast to map failed" );
+                this.currentMap = null;
+                validMap = false;
+                return;
+            }
+        } else {
+            System.out.println( "get 0 for read\n" );
+            validMap = false;
+            // empty, uselessMap
+            read();
+            this.currentMap = null;
+            return;
+        }
     }
 
     public boolean connectToHost() {
@@ -97,19 +139,23 @@ public class TcpClient {
         currentSize = Integer.parseInt( read() );
         cliqueSize = Long.parseLong( read() );
         currentGraph = read();
+        readMap();
         System.out.println( "Client start to work on problem with size " +
                             Integer.toString( currentSize ) + " and clique size " +
                             Long.toString( cliqueSize ) );
 
     }
 
+
     // call by algorithm, start the exchange with server
     // if graph from update is invalid, graph will be empty
     // the reuslt graph return by getter will be all -1
-    public void updateFromAlg( int problemSize, long cliqueSize, int[][] graph ) {
+    public void updateFromAlg( int problemSize, long cliqueSize, int[][] graph,
+                               ConcurrentHashMap< Integer, ConcurrentHashMap< UUID, Integer > > map) {
         this.currentSize = problemSize;
         this.cliqueSize = cliqueSize;
         this.currentGraph = translateGraphToString( graph );
+        this.currentMap = map;
         // invalid graph
         if ( currentGraph == " " ) {
             return;
@@ -158,7 +204,7 @@ public class TcpClient {
     // handle the exchange with server
     public void startExchange() {
         String message;
-
+        // set the map to be valid, if exception caught, set it to false
         System.out.println( "exchange start" );
         write( new String[] { exchangeStartMessage } );
         message = read();
@@ -186,10 +232,33 @@ public class TcpClient {
         }
     }
 
+    private static Object fromString( String s ) throws IOException ,
+                                                        ClassNotFoundException {
+        byte [] data = Base64.getDecoder().decode( s );
+        ObjectInputStream ois = new ObjectInputStream( new ByteArrayInputStream(  data ) );
+        Object o  = ois.readObject();
+        ois.close();
+        return o;
+    }
+
+    /** Write the object to a Base64 string. */
+    private static String toString( Serializable o ) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream( baos );
+        oos.writeObject( o );
+        oos.close();
+        return Base64.getEncoder().encodeToString(baos.toByteArray()); 
+    }
+
     public void handleRequestGraph() {
         String message = "";
         System.out.println( "server request client side graph" );
-        write( new String[] { currentGraph } );
+        try {
+            write( new String[] { currentGraph, toString( this.currentMap ) } );
+        } catch( IOException i ){
+            System.out.println( "serialize failed" );
+            return;
+        }
         message = read();
 
         if ( message.equals( errorMessage ) ) {
@@ -213,6 +282,7 @@ public class TcpClient {
         this.currentSize = Integer.parseInt( read() );
         this.cliqueSize = Long.parseLong( read() );
         this.currentGraph = read();
+        readMap();
         System.out.println( "problem size not matched with server, now = " + this.currentSize );
         message = read();
         if ( message.equals( tranmissionCompleteMessage ) ) {
@@ -230,10 +300,11 @@ public class TcpClient {
     public void handleDeny() {
         String message = read();
         if ( message.equals( tieMessage ) ) {
-            System.out.println( "server and client haave same clique" );
+            System.out.println( "server and client have same clique" );
         } else {
             this.cliqueSize = Long.parseLong( message );
             this.currentGraph = read();
+            readMap();
             System.out.println( "server has better clique " + message );
         }
     }
@@ -293,21 +364,28 @@ public class TcpClient {
         TcpClient client = new TcpClient( "127.0.0.1", 7788 );
         Random rand = new Random();
         int reduce = 0;
-        int currentClique = 500;
-        int [][] graph = new int[ 15 ][ 15 ];
-        client.run();
-        /*
-          regualr test
-        client.updateFromAlg( 6, 5, "0000000000000000000000000" );
-        client.updateFromAlg( 5, 5, "0000000000000000000000000" );
-        client.updateFromAlg( 5, 5, "0000000000000000000000000" );
-        client.updateFromAlg( 5, 4, "000000000000000000000000" );
-        client.updateFromAlg( 5, 4, "0000000000000000000000000" );
-        client.updateFromAlg( 5, 0, "0000000000000000000000000" );
-        client.updateFromAlg( 6, 100, "000000000000000000000000000000000000" );
-        */
-        client.updateFromAlg( 15, currentClique, graph );
+        int currentClique = 600;
+        int [][] graph = new int[ 306 ][ 306 ];
+        ConcurrentHashMap< Integer, ConcurrentHashMap< UUID, Integer > > currentMap = new ConcurrentHashMap< Integer, ConcurrentHashMap< UUID, Integer > >();
+        ConcurrentHashMap< UUID, Integer > temp = new ConcurrentHashMap< UUID, Integer >();
+        UUID uuid = UUID.randomUUID();
+        temp.put( uuid, new Integer( 1 ) );
+        currentMap.put( new Integer( 5 ), temp );
 
+        client.run();
+
+        client.updateFromAlg( 306, currentClique, graph, currentMap );
+
+        if ( client.getValidMap() ) {
+            System.out.println( "map is setted up" );
+        } else {
+            System.out.println( "not set up" );
+        }
+
+        currentMap = client.getMap();
+        System.out.println( currentMap.get( new Integer( 5 ) ) );
+
+        /*
         while ( true ) {
             try{
                 TimeUnit.SECONDS.sleep( 2 );
@@ -319,9 +397,9 @@ public class TcpClient {
             if ( currentClique <= 0 ) {
                 break;
             }
-            client.updateFromAlg( 15, currentClique, graph );
+            client.updateFromAlg( 306, currentClique, graph );
             System.out.println( client.getAlpha() );
-        }
+            }*/
 
         client.close();
     }

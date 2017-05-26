@@ -134,6 +134,8 @@ class TcpServer( object ):
         self.alpha = -1
         self.cliqueRecord = []
         self.cliqueRecordCount = 0
+        self.isSetup = '0'
+        self.mapString = ' '
         if self.backup:
             self.currentGraph = ' '
         else:
@@ -621,7 +623,9 @@ class TcpServer( object ):
                                    str( self.firstCandidatePort ),
                                    str( self.currentSize ),
                                    str( self.cliqueSize ),
-                                   self.currentGraph ] )
+                                   self.currentGraph,
+                                   self.isSetup,
+                                   self.mapString ] )
         self.releaseLock()
         while True:
             try:
@@ -701,12 +705,14 @@ class TcpServer( object ):
         global errorMessage
         global tranmissionCompleteMessage
         graph = ' '
-        recvSize = self.currentSize * self.currentSize + 50
+        recvSize = self.currentSize * self.currentSize * 2 + 50
 
         # request the matrix from the client
         self.doLogging( 'request graph from client', clientID )
         self.sendPacket( client, [ requestMessage ] )
-        graph = self.recvPacket( client, recvSize )[ 0 ]
+
+        msg = self.recvPacket( client, recvSize )
+        graph = msg[ 0 ]
 
         # case A_0.2 & case A_1.2, invalid graph
         if not self.validGraph( graph, clientID ):
@@ -716,6 +722,8 @@ class TcpServer( object ):
 
         # case A_0.1 && case A_1.1, keep the graph
         self.currentGraph = graph
+        self.mapString = msg[ 1 ]
+        self.isSetup = '1'
         self.cliqueSize = clientCliqueSize
 
         # case A_0.1, increment the problem size, include tranmission complete message
@@ -726,6 +734,8 @@ class TcpServer( object ):
             print self.currentGraph
             self.currentSize += 1
             self.currentGraph = self.defaultGraph()
+            self.isSetup = '0'
+            self.mapString = ' '
             self.cliqueSize = sys.maxsize
             self.doLogging( 'answer found, update problem size', clientID )
             self.cleanLogFile()
@@ -785,7 +795,11 @@ class TcpServer( object ):
             self.sendPacket( client, [ denyMessage, tieMessage ] )
         else :
             self.doLogging( 'server has better graph, send it to client', clientID )
-            self.sendPacket( client, [ denyMessage, str( self.cliqueSize ), str( self.currentGraph ) ] )
+            self.sendPacket( client, [ denyMessage,
+                                       str( self.cliqueSize ),
+                                       str( self.currentGraph ),
+                                       self.isSetup,
+                                       self.mapString ] )
 
     def validGraph( self, graph, clientID ):
         # don't need to lock here, if size has been changed
@@ -810,6 +824,8 @@ class TcpServer( object ):
                   str( self.currentSize ),
                   str( self.cliqueSize ),
                   self.defaultGraph( useLastGraphAsBase = True ),
+                  self.isSetup,
+                  self.mapString,
                   tranmissionCompleteMessage ]
         self.sendPacket( client, datas )
         return

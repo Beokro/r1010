@@ -13,6 +13,8 @@
             Server -> current size
             Server -> clique size
             Server -> current graph
+            Server -> isMapValid
+            Server -> map
 
 Alpha Request
             Client -> Alpha Request message
@@ -36,6 +38,8 @@ Loop Start
             Server -> ProblemSize changed message 
             Server -> new problem size
             Server -> current grpah
+            Server -> isMapValid
+            Server -> current map
             Server -> tranmission complete message
 
 #### caseA_0.2: graph is invalid
@@ -45,6 +49,7 @@ Loop Start
 ### caseA_1: client has smaller number
             Server -> Request message
             Client -> grpah that has the sent clique number
+            Client -> map corresponding with that
 
 #### caseA_1.1: received graph is valid
             Server keep the graph
@@ -58,6 +63,8 @@ Loop Start
             Server -> deny message
             Server -> current clique size 
             Server -> current graph
+            Server -> isMapValid
+            Server -> current map
 
 ### caseA_3: server and client have same clique number
             Server -> deny message + tie message
@@ -67,6 +74,8 @@ Loop Start
             Server -> ProblemSize changed message
             Server -> new problem size
             Server -> clique size + current graph
+            Server -> isMapValid
+            Server -> current map
             Server -> tranmission complete message
 
 
