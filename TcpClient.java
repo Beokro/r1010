@@ -253,6 +253,7 @@ public class TcpClient {
     public void handleRequestGraph() {
         String message = "";
         System.out.println( "server request client side graph" );
+
         try {
             write( new String[] { currentGraph, toString( this.currentMap ) } );
         } catch( IOException i ){
@@ -260,6 +261,8 @@ public class TcpClient {
             return;
         }
         message = read();
+        // map does not change, therefore valid
+        validMap = true;
 
         if ( message.equals( errorMessage ) ) {
             // case A_0.2, case A_1.2
