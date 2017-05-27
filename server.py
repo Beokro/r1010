@@ -171,6 +171,7 @@ class TcpServer( object ):
 
         content = [ x.strip() for x in content ]
         listSize = len( content )
+        print listSize
         self.lastResult = int( content[ listSize - 4 ] )
         self.lastGraph = content[ listSize - 3 ]
 
@@ -204,7 +205,7 @@ class TcpServer( object ):
         lastResult =  int( content[ listSize - 4 ] )
         lastGraph = content[ listSize - 3 ]
         with open( newAnswerFileName, "w+" ) as myfile:
-            myfile.write( lastResult + '\n' )
+            myfile.write( str( lastResult ) + '\n' )
             myfile.write( lastGraph + '\n\n\n' )
 
     def getTempGraph( self ):
@@ -242,6 +243,7 @@ class TcpServer( object ):
             print 'start wrap'
             if useLastGraphAsBase:
                 glists = list( chunks( self.lastGraph ,  self.lastResult ) )
+                print len( glists )
             else:
                 glists = list( chunks( self.currentGraph ,  self.currentSize - 1 ) )
             print 'end wrap'
