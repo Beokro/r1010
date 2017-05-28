@@ -12,6 +12,7 @@ import java.util.*;
 import java.io.*;
 import java.util.concurrent.atomic.AtomicLong;
 
+/*
 class Edge implements java.io.Serializable {
     int node1;
     int node2;
@@ -36,7 +37,7 @@ class Edge implements java.io.Serializable {
         return hash;
     }
 }
-
+*/
 
 // look at the example at the main
 // bascially call updateFromAlg( int problemSize, int cliqueSize, int[][] graph )
@@ -127,7 +128,6 @@ public class TcpClient {
         AtomicLong al;
 
         for ( String entry : entries ) {
-            System.out.println( entry );
             nums = entry.split( "_" );
             e = new Edge( Integer.parseInt( nums[ 0 ] ), Integer.parseInt( nums[ 1 ] ) );
             al = new AtomicLong( Long.parseLong( nums[ 2 ] ) );
@@ -141,19 +141,7 @@ public class TcpClient {
         if ( val.equals( "1" ) ) {
             System.out.println( "get 1 for read\n" );
             validMap = true;
-            try {
-                this.currentMap = ( ConcurrentHashMap<Edge, AtomicLong> )fromString( read() );
-            } catch( IOException i ) {
-                System.out.println( "IOExpcetion fromString or cast to map failed" );
-                this.currentMap = null;
-                validMap = false;
-                return;
-            } catch ( ClassNotFoundException i ) {
-                System.out.println( "ClassNotFoundExpcetion fromString or cast to map failed" );
-                this.currentMap = null;
-                validMap = false;
-                return;
-            }
+            this.currentMap = stringToMap( read() );
         } else {
             System.out.println( "get 0 for read\n" );
             validMap = false;
@@ -307,12 +295,7 @@ public class TcpClient {
         String message = "";
         System.out.println( "server request client side graph" );
 
-        try {
-            write( new String[] { currentGraph, toString( this.currentMap ) } );
-        } catch( IOException i ){
-            System.out.println( "serialize failed" );
-            return;
-        }
+        write( new String[] { currentGraph, mapToString( this.currentMap ) } );
         message = read();
         // map does not change, therefore valid
         validMap = true;
@@ -417,31 +400,16 @@ public class TcpClient {
 
 
     public static void main( String[] args ) {
-        TcpClient client = new TcpClient( "127.0.0.1", 7788 );
-        ConcurrentHashMap<Edge, AtomicLong> map = new ConcurrentHashMap<Edge, AtomicLong>();
-        Edge e = new Edge( 1, 2 );
-        AtomicLong l = new AtomicLong( 3 );
-        map.put( e, l );
-        String s = client.mapToString( map );
-        map = client.stringToMap( s );
-        System.out.println( map.get( e ) );
-
-
         /*
         TcpClient client = new TcpClient( "127.0.0.1", 7788 );
         Random rand = new Random();
         int reduce = 0;
         int currentClique = 600;
         int [][] graph = new int[ 306 ][ 306 ];
-        ConcurrentHashMap<Edge, AtomicLong> currentMap = new ConcurrentHashMap<Edge, AtomicLong>();
-        ConcurrentHashMap< UUID, Integer > temp = new ConcurrentHashMap< UUID, Integer >();
-        UUID uuid = UUID.randomUUID();
-        temp.put( uuid, new Integer( 1 ) );
-        currentMap.put( new Integer( 5 ), temp );
-
-        client.run();
-
-        client.updateFromAlg( 306, currentClique, graph, currentMap );
+        ConcurrentHashMap<Edge, AtomicLong> map = new ConcurrentHashMap<Edge, AtomicLong>();
+        Edge e = new Edge( 1, 2 );
+        AtomicLong l = new AtomicLong( 3 );
+        map.put( e, l );
 
         if ( client.getValidMap() ) {
             System.out.println( "map is setted up" );
@@ -449,8 +417,17 @@ public class TcpClient {
             System.out.println( "not set up" );
         }
 
-        currentMap = client.getMap();
-        System.out.println( currentMap.get( new Integer( 5 ) ) );
+
+        client.updateFromAlg( 306, currentClique, graph, map );
+
+        if ( client.getValidMap() ) {
+            System.out.println( "map is setted up" );
+        } else {
+            System.out.println( "not set up" );
+        }
+
+        map = client.getMap();
+        System.out.println( map.get( e ) );
 
         /*
         while ( true ) {
