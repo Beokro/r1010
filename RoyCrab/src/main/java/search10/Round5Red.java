@@ -1,8 +1,10 @@
 package search10;
+import java.util.HashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 
 
 public class Round5Red extends Thread {
@@ -10,7 +12,9 @@ public class Round5Red extends Thread {
     public static ConcurrentMap<Integer, BlockingQueue<Edge>> input;
     public static ConcurrentMap<Integer, Long> result;
     private static Object lock = new Object();
-
+    Map<Edge, Long> edgeToClique =
+                                    new HashMap<Edge, Long>();
+    
     Round5Red() {
         input = Round5Map.result;
         result = new ConcurrentHashMap<Integer, Long>();
@@ -32,9 +36,13 @@ public class Round5Red extends Thread {
                 g.addEdge(Integer.toString(edge.node1), Integer.toString(edge.node2));
                 //g.addEdge(edge.node1, edge.node2);
             }
+            g.edgeToClique = edgeToClique;
             //long cliques = g.count9Cliques();
-            long cliques = g.countCliquesOfSize(9);
+            long cliques = g.countCliquesOfSize(9, false);
             result.put(entry.getKey(), cliques);
+        }
+        for(Map.Entry<Edge, Long> entry : edgeToClique.entrySet()) {
+            Alg.edgeToClique.get(entry.getKey()).addAndGet(entry.getValue());
         }
     }
 }

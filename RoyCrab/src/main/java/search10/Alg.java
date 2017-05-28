@@ -1,21 +1,30 @@
 package search10;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
-import java.rmi.RemoteException;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicLong;
+
+class CliqueId {
+    long count;
+    CliqueId(long count) {
+        this.count = count;
+    }
+}
 
 class NodeDeg {
     int node;
@@ -41,7 +50,7 @@ class NodeDeg {
     }
 }
 
-class Edge {
+class Edge implements java.io.Serializable {
     int node1;
     int node2;
     Edge(int node1, int node2) {
@@ -102,12 +111,12 @@ class NodeDegPair {
 }
 
 class ChangeAndResult implements Comparator<ChangeAndResult> {
-    int change;
+    Edge change;
     long Dcliques;
     
     ChangeAndResult() {}
     
-    ChangeAndResult(int change, long Dcliques){
+    ChangeAndResult(Edge change, long Dcliques){
         this.change = change;
         this.Dcliques = Dcliques;
     }
@@ -123,10 +132,11 @@ class ChangeAndResult implements Comparator<ChangeAndResult> {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 53 * hash + this.change;
+        int hash = 3;
+        hash = 71 * hash + Objects.hashCode(this.change);
         return hash;
     }
+    
     
     @Override
     public int compare(ChangeAndResult a, ChangeAndResult b) {
@@ -138,7 +148,6 @@ public class Alg {
     private String serverIp;
     private String bloomFilterIp;
     public static TcpClient client = null;
-    public Map<Edge, Integer> edgeToIndex;
     public int[][] graph2d;
     private int currentSize;
     static Object lock1 = new Object();
@@ -146,19 +155,17 @@ public class Alg {
     static Object alarm = new Object();
     static AtomicLong current;
     static Set<ChangeAndResult> bestOptions;
-    static int change;
     double globalBetaBase = 10;
     double globalGamma = 0.006;
+    static long cliqueId = 0;
     
-    static BloomFilter history = new BloomFilter();
-    static ConcurrentMap<Edge, AtomicLong> edgeToClique =
-                                    new ConcurrentHashMap<Edge, AtomicLong>();
-
+    static RemoteBloomFilter history;
+    static ConcurrentMap<Edge, AtomicLong> edgeToClique;
+    static ConcurrentMap<Edge, AtomicLong> save;
+    
     Alg(String serverIp, String bloomFilterIp) {
-        edgeToIndex = new HashMap<Edge, Integer>();
         this.serverIp = serverIp;
         this.bloomFilterIp = bloomFilterIp;
-        change = -1;
     }
     
     private double adjustBeta(long diff, double betaBase) {
@@ -206,23 +213,37 @@ public class Alg {
                 return true;
             }
         }
+        /*
+        Random rand = new Random(System.currentTimeMillis());
+        if(rand.nextInt(1000) == 1) {
+            Edge edge = new Edge(rand.nextInt(currentSize), rand.nextInt(currentSize));
+            if(!hasEdge(edge)) {
+                edge = flip(edge);
+            }
+            long minus = 0;
+            if(edgeToClique.get(edge) != null) {
+                minus = edgeToClique.get(edge).get();
+            }
+            long Dcliques = countCliquesSub(flip(edge), false, null) - minus;
+            flipEdge(edge);
+            current.set(current.get() + Dcliques);
+            updateEdgeToClique(edge);            
+        }
+        */
         // else server is stuck so we use our graph
         return false;
     }
     
     class AlgThread extends Thread {
         ConcurrentMap<Edge, AtomicLong> edgeToClique;
-        long current;
-        AlgThread(ConcurrentMap<Edge, AtomicLong> edgeToClique, AtomicLong current) {
+        AlgThread(ConcurrentMap<Edge, AtomicLong> edgeToClique) {
             this.edgeToClique = edgeToClique;
-            this.current = current.get();
         }
         
         @Override
         public void run() {
             while(true) {
                 Map.Entry<Edge, AtomicLong> entry = null;
-                int change = -1;
                 Edge e = null;
                 synchronized(Alg.lock1) {
                     if(edgeToClique.isEmpty()) {
@@ -231,17 +252,14 @@ public class Alg {
                     entry = edgeToClique.entrySet().iterator().next();
                     edgeToClique.remove(entry.getKey());
                     e = entry.getKey();
-                    change = edgeToIndex.get(e);
-                    applyChange(change);
-                    if(hasVisited()) {
-                        applyChange(change);
-                        continue;
-                    }
-                    applyChange(change);
                 }
-                
-                long Dcliques = countCliquesSubFlip(e) - entry.getValue().get();
-                bestOptions.add(new ChangeAndResult(change, Dcliques));
+                /*
+                if(hasVisited(e)) {
+                    continue;
+                }
+                */
+                long Dcliques = countCliquesSub(flip(e), false, null) - entry.getValue().get();
+                bestOptions.add(new ChangeAndResult(e, Dcliques));
                 if(Dcliques < 0) {
                     synchronized(Alg.lock1) {
                         edgeToClique.clear();
@@ -254,21 +272,34 @@ public class Alg {
         }
     }
     
+    private void saveEdgeToClique() {
+        save = new ConcurrentHashMap<>();
+        for(Map.Entry<Edge, AtomicLong> entry : edgeToClique.entrySet()) {
+            save.put(entry.getKey(), entry.getValue());
+        }
+    }
+    
     public void start() {
         graph2d = client.getGraph();
         currentSize = client.getCurrentSize();
-        history.setCurrentSize(currentSize);
-        createGraph();
+        if(!client.getValidMap()) {
+            createGraph();
+            edgeToClique = new ConcurrentHashMap<>();
+            current = new AtomicLong(countCliques());
+            client.updateFromAlg(client.getCurrentSize(), current.get(),
+                                    graph2d, (ConcurrentHashMap)edgeToClique);
+        } else {
+            edgeToClique = (ConcurrentMap)client.getMap();
+        }
         int cores = Runtime.getRuntime().availableProcessors();
-        current = new AtomicLong(Long.MAX_VALUE);
+        current = new AtomicLong(client.getCliqueSize());
         while(current.get() != 0) {
             bestOptions = new ConcurrentSkipListSet<ChangeAndResult>(new ChangeAndResult());
-            current = new AtomicLong(countCliques());
-            addHistory();
-            client.updateFromAlg(currentSize, current.get(), graph2d);
+            client.updateFromAlg(currentSize, current.get(), graph2d, (ConcurrentHashMap)edgeToClique);
+            saveEdgeToClique();
             List<Thread> workers = new ArrayList<Thread>();
             for(int i = 0; i < cores; i++) {
-                workers.add(new AlgThread(edgeToClique, current));
+                workers.add(new AlgThread(edgeToClique));
             }
             for(Thread t : workers) {
                 t.start();
@@ -287,41 +318,37 @@ public class Alg {
                     e.printStackTrace();
                 }
             }
+            edgeToClique = save;
             Iterator<ChangeAndResult> it = bestOptions.iterator();
+            /*
+            ChangeAndResult first = it.next();
+            if(first.Dcliques >= 0) {
+                Random rand = new Random(System.currentTimeMillis());
+                int nextN = rand.nextInt(bestOptions.size() / 2);
+                while(nextN > 0) {
+                    it.next();
+                    nextN --;
+                }
+            }
+            */
             while(it.hasNext()) {
                 ChangeAndResult best = it.next();
-                applyChange(best.change);
-                if(!hasVisited()) {
+                if(!hasVisited(best.change)) {
+                    flipEdge(best.change);
                     current.set(current.get() + best.Dcliques);
+                    updateEdgeToClique(best.change);
                     break;
                 }
-                applyChange(best.change);
             }
+            addHistory();
             long lastTime = client.getCliqueSize();
-            client.updateFromAlg(currentSize, current.get(), graph2d);
+            client.updateFromAlg(currentSize, current.get(),
+                                    graph2d, (ConcurrentHashMap)edgeToClique);
             long thisTime = client.getCliqueSize();
             
             if(useServer(currentSize, lastTime, thisTime)) {
                 return;
             } 
-        }
-    }
-    
-    static void recordEdges(int node1, String node2, int[] indexes, List<String> neighbors) {
-        List<Integer> nodes =  new ArrayList<Integer>();
-        nodes.add(node1);
-        nodes.add(Integer.parseInt(node2));
-        for(int i = 0; i < indexes.length; i++) {
-            String node = neighbors.get(indexes[i]);
-            nodes.add(Integer.parseInt(node));
-        }
-        Collections.sort(nodes);
-        for(int i = 0; i < nodes.size(); i++) {
-            for(int j = i + 1; j < nodes.size(); j++) {
-                Edge edge = new Edge(nodes.get(i), nodes.get(j));
-                edgeToClique.putIfAbsent(edge, new AtomicLong());
-                edgeToClique.get(edge).incrementAndGet();
-            }
         }
     }
     
@@ -333,14 +360,206 @@ public class Alg {
         }
     }
 
-    private void addHistory() {
-        history.addHistory(graph2d);
+    private void flipEdge(Edge edge) {
+        if(edge.node1 >= currentSize) {
+            edge = flip(edge);
+        }
+        graph2d[edge.node1][edge.node2] = Math.abs(graph2d[edge.node1][edge.node2] - 1);
     }
     
-    private boolean hasVisited() {
-        return history.inHistory(graph2d);
+    void changeEdgeToClique(Edge edge, long delta) {
+        if(delta <= 0) {
+            edgeToClique.get(edge).addAndGet(delta);
+            if(edgeToClique.get(edge).get() == 0) {
+                edgeToClique.remove(edge);
+            }
+        } else {
+            edgeToClique.putIfAbsent(edge, new AtomicLong());
+            edgeToClique.get(edge).addAndGet(delta);
+        }
+        
+    }
+    
+    void updateEdgeToClique(Edge edge) {
+        edgeToClique.remove(edge);
+        Edge flip = flip(edge);
+        Map<Edge, Long> minus = new HashMap<>();
+        Map<Edge, Long> plus = new HashMap<>();
+        Map<Integer, Long> nodesMinus = new HashMap<>();
+        Map<Integer, Long> nodesPlus = new HashMap<>();
+        countCliquesSub(edge, true, minus);
+        long newCount = countCliquesSub(flip, true, plus);
+        for(Map.Entry<Edge, Long> entry : minus.entrySet()) {
+            changeEdgeToClique(entry.getKey(), -entry.getValue());
+            nodesMinus.putIfAbsent(entry.getKey().node1, new Long(0));
+            nodesMinus.putIfAbsent(entry.getKey().node2, new Long(0));
+            nodesMinus.put(entry.getKey().node1, nodesMinus.get(entry.getKey().node1) + entry.getValue());
+            nodesMinus.put(entry.getKey().node2, nodesMinus.get(entry.getKey().node2) + entry.getValue());
+        }
+        for(Map.Entry<Edge, Long> entry : plus.entrySet()) {
+            changeEdgeToClique(entry.getKey(), entry.getValue());
+            nodesPlus.putIfAbsent(entry.getKey().node1, new Long(0));
+            nodesPlus.putIfAbsent(entry.getKey().node2, new Long(0));
+            nodesPlus.put(entry.getKey().node1, nodesPlus.get(entry.getKey().node1) + entry.getValue());
+            nodesPlus.put(entry.getKey().node2, nodesPlus.get(entry.getKey().node2) + entry.getValue());
+        }
+        for(Map.Entry<Integer, Long> entry : nodesMinus.entrySet()) {
+            Edge temp1 = new Edge(Math.min(edge.node1, entry.getKey()),
+                                  Math.max(edge.node1, entry.getKey()));
+            Edge temp2 = new Edge(Math.min(edge.node2, entry.getKey()),
+                                  Math.max(edge.node2, entry.getKey()));
+            changeEdgeToClique(temp1, -entry.getValue() / 7);
+            changeEdgeToClique(temp2, -entry.getValue() / 7);
+            
+        }
+        for(Map.Entry<Integer, Long> entry : nodesPlus.entrySet()) {
+            Edge temp1 = new Edge(Math.min(flip.node1, entry.getKey()),
+                                  Math.max(flip.node1, entry.getKey()));
+            Edge temp2 = new Edge(Math.min(flip.node2, entry.getKey()),
+                                  Math.max(flip.node2, entry.getKey()));
+            changeEdgeToClique(temp1, entry.getValue() / 7);
+            changeEdgeToClique(temp2, entry.getValue() / 7);
+        }
+        edgeToClique.put(flip, new AtomicLong(newCount));
+    }
+    /*
+    static void nodeToEdge(Map<Integer, Set<Long>> nodeToClique, Map<Edge, Long> edgeToClique) {
+        List<Map.Entry<Integer, Set<Long>>> list = new ArrayList<>(nodeToClique.entrySet());
+        for(int i = 0; i < list.size(); i++) {
+            for(int j = i + 1; j < list.size(); j++) {
+                long count = 0;
+                Set<Long> toIt = list.get(i).getValue();
+                Set<Long> toCheck = list.get(j).getValue();
+                if(toIt.size() > toCheck.size()) {
+                    Set<Long> temp = toIt;
+                    toIt = toCheck;
+                    toCheck = temp;
+                }
+                for(Long item : toIt) {
+                    if(toCheck.contains(item)) {
+                        count++;
+                    }
+                }
+                if(count != 0) {
+                    int node1 = list.get(i).getKey();
+                    int node2 = list.get(j).getKey();
+                    Edge edge = new Edge(Math.min(node1, node2),
+                                         Math.max(node1, node2));
+                    edgeToClique.putIfAbsent(edge, new Long(0));
+                    edgeToClique.put(edge, edgeToClique.get(edge) + count);
+                }
+            }
+        }
+    }
+    
+    static void recordNodes(CliqueId counter, int node1, String node2, int[] indexes,
+            List<String> neighbors, Map<Integer, Set<Long>> nodeToClique) {
+        List<Integer> nodes =  new ArrayList<Integer>();
+        nodes.add(node1);
+        nodes.add(Integer.parseInt(node2));
+        for(int i = 0; i < indexes.length; i++) {
+            String node = neighbors.get(indexes[i]);
+            nodes.add(Integer.parseInt(node));
+        }
+        Collections.sort(nodes);
+        for(Integer node : nodes) {
+            nodeToClique.putIfAbsent(node, new HashSet<>());
+            nodeToClique.get(node).add(counter.count);
+        }
+        counter.count ++;
+    }
+    
+    static void recordNodes(CliqueId counter, String node, int[] indexes,
+            List<String> neighbors, Map<Integer, Set<Long>> nodeToClique, boolean change) {
+        if(!change) {
+            return;
+        }
+        List<Integer> nodes =  new ArrayList<Integer>();
+        nodes.add(Integer.parseInt(node));
+        for(int i = 0; i < indexes.length; i++) {
+            String temp = neighbors.get(indexes[i]);
+            nodes.add(Integer.parseInt(temp));
+        }
+        Collections.sort(nodes);
+        for(Integer temp : nodes) {
+            nodeToClique.putIfAbsent(temp, new HashSet<>());
+            nodeToClique.get(temp).add(counter.count);
+        }
+        counter.count ++;
+    }
+    */
+    static void recordEdges(int node1, String node2, int[] indexes,
+                        List<String> neighbors, Map<Edge, Long> edgeToClique) {
+        List<Integer> nodes =  new ArrayList<Integer>();
+        nodes.add(node1);
+        nodes.add(Integer.parseInt(node2));
+        for(int i = 0; i < indexes.length; i++) {
+            String node = neighbors.get(indexes[i]);
+            nodes.add(Integer.parseInt(node));
+        }
+        Collections.sort(nodes);
+        for(int i = 0; i < nodes.size(); i++) {
+            for(int j = i + 1; j < nodes.size(); j++) {
+                Edge edge = new Edge(nodes.get(i), nodes.get(j));
+                edgeToClique.putIfAbsent(edge, new Long(0));
+                edgeToClique.put(edge, edgeToClique.get(edge) + 1);
+            }
+        }
+    }
+    
+    static void recordEdges(String node, int[] indexes, List<String> neighbors,
+            Map<Edge, Long> edgeToClique, boolean change) {
+        if(!change) {
+            return;
+        }
+        List<Integer> nodes =  new ArrayList<Integer>();
+        nodes.add(Integer.parseInt(node));
+        for(int i = 0; i < indexes.length; i++) {
+            String temp = neighbors.get(indexes[i]);
+            nodes.add(Integer.parseInt(temp));
+        }
+        Collections.sort(nodes);
+        for(int i = 0; i < nodes.size(); i++) {
+            for(int j = i + 1; j < nodes.size(); j++) {
+                Edge edge = new Edge(nodes.get(i), nodes.get(j));
+                edgeToClique.putIfAbsent(edge, new Long(0));
+                edgeToClique.put(edge, edgeToClique.get(edge) + 1);
+            }
+        }
+    }
+    
+    private void addHistory() {
+        try{
+            history.addHistory(graph2d);
+        } catch(RemoteException e) {
+            e.printStackTrace();
+        }
+    }
+    /*
+    static synchronized UUID nextCliqueId() {
+        return UUID.randomUUID();
+    }
+    */
+    private boolean hasEdge(Edge edge) {
+        if(edge.node1 >= currentSize) {
+            return graph2d[edge.node1 - currentSize][edge.node2 - currentSize] == 0;
+        }
+        return graph2d[edge.node1][edge.node2] == 1;
     }
 
+    private synchronized boolean hasVisited(Edge edge) {
+        boolean result = false;
+        flipEdge(edge);
+        try{
+            result = history.inHistory(graph2d);
+        } catch(RemoteException e) {
+            e.printStackTrace();
+        }
+        flipEdge(edge);
+        return result;
+    }
+
+    
     private void createGraph() {
         int size = graph2d.length;
         Round1Map.graph = new ConcurrentHashMap<Integer, Edge>();
@@ -349,10 +568,8 @@ public class Alg {
             for(int j = i + 1; j < size; j++) {
                 if(graph2d[i][j] == 1) {
                     Round1Map.graph.put(count, new Edge(i, j));
-                    edgeToIndex.put(new Edge(i, j), count);
                 } else {
                     Round1Map.graph.put(count, new Edge(i + size, j + size));
-                    edgeToIndex.put(new Edge(i + size, j + size), count);
                 }
                 count += 1;
             }
@@ -406,6 +623,12 @@ public class Alg {
 
     private long countCliques() {
         edgeToClique = new ConcurrentHashMap<Edge, AtomicLong>();
+        for(int i = 0; i < currentSize; i++) {
+            for(int j = i + 1; j < currentSize; j++) {
+                edgeToClique.put(new Edge(i, j), new AtomicLong());
+                edgeToClique.put(new Edge(i + currentSize, j + currentSize), new AtomicLong());
+            }
+        }
         int cores = Runtime.getRuntime().availableProcessors();
         runRound(1, cores);
         Round1Map.graph = Round1Map.save;
@@ -422,42 +645,49 @@ public class Alg {
                 cliques += i;
             }
         }
+        Iterator<Map.Entry<Edge, AtomicLong>> it = edgeToClique.entrySet().iterator();
+        while(it.hasNext()) {
+            Map.Entry<Edge, AtomicLong> entry = it.next();
+            if(entry.getValue().get() == 0) {
+                it.remove();
+            }
+        }
         return cliques;
     }
-    
-    synchronized private void applyChange(int index) {
-        Edge edge = Round1Map.graph.get(index);
-        Round1Map.graph.put(index, flip(edge)); 
-        edgeToIndex.put(flip(edge), index);
-        edgeToIndex.remove(edge);
-        if(edge.node1 >= currentSize) {
-            edge = flip(edge);
-        }
-        graph2d[edge.node1][edge.node2] = Math.abs(graph2d[edge.node1][edge.node2] - 1);
-    }
-    
-    private long countCliquesSubFlip(Edge edge) {
-        int currentSize = client.getCurrentSize();
-        Edge flip = flip(edge);
+
+    List<Integer> getIntersectNodes(Edge edge) {
         List<Integer> intersect = new ArrayList<Integer>();
-        if(flip.node1 >= currentSize) {
+        if(edge.node1 >= currentSize) {
             for(int i = currentSize; i < currentSize * 2; i++) {
-                Edge test1 = new Edge(Math.min(flip.node1, i), Math.max(flip.node1, i));
-                Edge test2 = new Edge(Math.min(flip.node2, i), Math.max(flip.node2, i));
-                if(edgeToIndex.get(test1) != null && edgeToIndex.get(test2) != null) {
+                if(i == edge.node1 || i == edge.node2) {
+                    continue;
+                }
+                Edge test1 = new Edge(Math.min(edge.node1, i), Math.max(edge.node1, i));
+                Edge test2 = new Edge(Math.min(edge.node2, i), Math.max(edge.node2, i));
+                if(hasEdge(test1) && hasEdge(test2)) {
                     intersect.add(i);
                 }
             }
         } else {
             for(int i = 0; i < currentSize; i++) {
-                Edge test1 = new Edge(Math.min(flip.node1, i), Math.max(flip.node1, i));
-                Edge test2 = new Edge(Math.min(flip.node2, i), Math.max(flip.node2, i));
-                if(edgeToIndex.get(test1) != null && edgeToIndex.get(test2) != null) {
+                if(i == edge.node1 || i == edge.node2) {
+                    continue;
+                }
+                Edge test1 = new Edge(Math.min(edge.node1, i), Math.max(edge.node1, i));
+                Edge test2 = new Edge(Math.min(edge.node2, i), Math.max(edge.node2, i));
+                if(hasEdge(test1) && hasEdge(test2)) {
                     intersect.add(i);
                 }
             }
         }
+        return intersect;
+    }
+    
+    private long countCliquesSub(Edge edge, boolean change, Map<Edge, Long> edgeToClique) {
+        int currentSize = client.getCurrentSize();
+        List<Integer> intersect = getIntersectNodes(edge);
         AdjListGraph g = new AdjListGraph();
+        g.edgeToClique = edgeToClique;
         for(int i = 0; i < intersect.size(); i++) {
             for(int j = i + 1; j < intersect.size(); j++) {
                 int node1 = intersect.get(i);
@@ -475,7 +705,7 @@ public class Alg {
                 }
             }
         }
-        return g.countCliquesOfSize(8);
+        return g.countCliquesOfSize(8, change);
     }
 
     public static void main( String[] args ) {
@@ -490,15 +720,30 @@ public class Alg {
         Alg excalibur = null;
 
         Alg.client = new TcpClient(serverIp, 7788);
-
+        try 
+        { 
+            Registry registry = LocateRegistry.getRegistry(
+                    bloomFilterIp, RemoteBloomFilter.PORT);
+            history = (RemoteBloomFilter)
+                registry.lookup(RemoteBloomFilter.SERVICE_NAME);
+        } 
+        catch (Exception e) 
+        { 
+            e.printStackTrace(); 
+        } 
         System.out.println("Alg start");
         System.out.println(Runtime.getRuntime().availableProcessors() + " processors");
         while(true) {
+            try {
+                if(history.getCurrentSize() < client.getCurrentSize()) {
+                    history.refresh(client.getCurrentSize());
+                }
+            } catch(RemoteException e) {
+                e.printStackTrace();
+            }
             excalibur = new Alg(serverIp, bloomFilterIp);
             excalibur.start();
-            if(history.getCurrentSize() < client.getCurrentSize()) {
-                history.refresh(client.getCurrentSize());
-            }
+            
         }
     }
 }
