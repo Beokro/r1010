@@ -1,3 +1,4 @@
+package search10;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.InputStreamReader;
@@ -53,6 +54,7 @@ public class TcpClient {
     public TcpClient( String destHost, int destPort ) {
         this.destHost = destHost;
         this.destPort = destPort;
+        run();
     }
 
     public int getCurrentSize() {

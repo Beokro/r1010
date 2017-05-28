@@ -16,14 +16,19 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class AdjListGraph {
 
 	private long unorientedSize=0;
 	private long orientedSize=0;
         public int node = -1;
-        public Edge edge = null;
-
+        public Map<Edge, Long> edgeToClique;
+        public Map<Integer, Set<Long>> nodeToClique = new HashMap<>();
+        
 	HashMap<String, HashSet<String>> graph = new HashMap<String, HashSet<String>>();  
 	HashMap<String, Integer> degrees =new HashMap<String, Integer>();
 
@@ -108,7 +113,7 @@ public class AdjListGraph {
 		return true;
 	}
 
-	public long countCliquesOfSize(int cliqueSize) {
+	public long countCliquesOfSize(int cliqueSize, boolean change) {
 
 		ArrayList<String> l = this.getNodeList();
 		ArrayList<String> neighbors; 
@@ -122,6 +127,7 @@ public class AdjListGraph {
 
 
 		String a;
+                CliqueId counter = new CliqueId(0);
 		while(it.hasNext()){
 			a=it.next();
                         
@@ -153,7 +159,11 @@ public class AdjListGraph {
 							} else {
                                                                 countRunning++;
                                                                 if(this.node != -1) {
-                                                                    Alg.recordEdges(this.node, a, indexes, neighbors);
+                                                                    //Alg.recordNodes(counter, this.node, a, indexes, neighbors, nodeToClique);
+                                                                    Alg.recordEdges(this.node, a, indexes, neighbors, edgeToClique);
+                                                                } else {
+                                                                    //Alg.recordNodes(counter, a, indexes, neighbors, nodeToClique, change);
+                                                                    Alg.recordEdges(a, indexes, neighbors, edgeToClique, change);
                                                                 }
 								indexes[fixing]++;
 							}
@@ -171,7 +181,7 @@ public class AdjListGraph {
 				}
 			}
 		}
-
+                //Alg.nodeToEdge(nodeToClique, edgeToClique);
 		return countRunning;
 
 	}

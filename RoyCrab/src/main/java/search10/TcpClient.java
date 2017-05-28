@@ -4,9 +4,14 @@ import java.io.BufferedWriter;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.IOException;
+import java.lang.NullPointerException;
 import java.net.Socket;
 import java.util.concurrent.TimeUnit;
 import java.util.Random;
+import java.util.concurrent.*;
+import java.util.*;
+import java.io.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 
 // look at the example at the main
@@ -32,11 +37,14 @@ public class TcpClient {
     static final String tranmissionCompleteMessage = "complete";
     static final String readFailedMessage = "readFailed";
     static final String clientClaimMessage = "claimClient";
+    static final String alphaRequest = "alphaReq";
 
     private String destHost;
     private int destPort;
     private int currentSize = 0;
     private long cliqueSize = Long.MAX_VALUE;
+    private ConcurrentHashMap<Edge, AtomicLong> currentMap;
+    private boolean validMap = false;
     private String currentGraph = " ";
     private String backupAddr = " ";
     private int backupPort = -1;
@@ -47,7 +55,7 @@ public class TcpClient {
     public TcpClient( String destHost, int destPort ) {
         this.destHost = destHost;
         this.destPort = destPort;
-        this.run();
+        run();
     }
 
     public int getCurrentSize() {
@@ -62,13 +70,56 @@ public class TcpClient {
         return translateGraphToArray( currentGraph );
     }
 
+    public boolean getValidMap() {
+        return validMap;
+    }
+
+    public ConcurrentHashMap<Edge, AtomicLong> getMap() {
+        return currentMap;
+    }
+
+    public double getAlpha() {
+        String message;
+        write( new String[] { alphaRequest } );
+        message = read();
+        return Double.parseDouble( message );
+    }
+
+    private void readMap() {
+        String val = read();
+        if ( val.equals( "1" ) ) {
+            System.out.println( "get 1 for read\n" );
+            validMap = true;
+            try {
+                this.currentMap = ( ConcurrentHashMap<Edge, AtomicLong> )fromString( read() );
+            } catch( IOException i ) {
+                System.out.println( "IOExpcetion fromString or cast to map failed" );
+                this.currentMap = null;
+                validMap = false;
+                return;
+            } catch ( ClassNotFoundException i ) {
+                System.out.println( "ClassNotFoundExpcetion fromString or cast to map failed" );
+                this.currentMap = null;
+                validMap = false;
+                return;
+            }
+        } else {
+            System.out.println( "get 0 for read\n" );
+            validMap = false;
+            // empty, uselessMap
+            read();
+            this.currentMap = null;
+            return;
+        }
+    }
+
     public boolean connectToHost() {
         try {
             sock = new Socket( destHost, destPort );
             sockReader = new BufferedReader( new InputStreamReader( sock.getInputStream() ) );
             sockWriter = new BufferedWriter( new OutputStreamWriter( sock.getOutputStream()) );
         } catch ( IOException i ) {
-            //System.out.println( "failed to connect to host" );
+            System.out.println( "failed to connect to host" );
             i.printStackTrace();
             return false;
         }
@@ -90,19 +141,23 @@ public class TcpClient {
         currentSize = Integer.parseInt( read() );
         cliqueSize = Long.parseLong( read() );
         currentGraph = read();
-        //System.out.println( "Client start to work on problem with size " +
-        //                    Integer.toString( currentSize ) + " and clique size " +
-        //                    Long.toString( cliqueSize ) );
+        readMap();
+        System.out.println( "Client start to work on problem with size " +
+                            Integer.toString( currentSize ) + " and clique size " +
+                            Long.toString( cliqueSize ) );
 
     }
+
 
     // call by algorithm, start the exchange with server
     // if graph from update is invalid, graph will be empty
     // the reuslt graph return by getter will be all -1
-    public void updateFromAlg( int problemSize, long cliqueSize, int[][] graph ) {
+    public void updateFromAlg( int problemSize, long cliqueSize, int[][] graph,
+                               ConcurrentHashMap<Edge, AtomicLong> map) {
         this.currentSize = problemSize;
         this.cliqueSize = cliqueSize;
         this.currentGraph = translateGraphToString( graph );
+        this.currentMap = map;
         // invalid graph
         if ( currentGraph == " " ) {
             return;
@@ -151,13 +206,13 @@ public class TcpClient {
     // handle the exchange with server
     public void startExchange() {
         String message;
-
-        //System.out.println( "exchange start" );
+        // set the map to be valid, if exception caught, set it to false
+        System.out.println( "exchange start" );
         write( new String[] { exchangeStartMessage } );
         message = read();
         if ( !message.equals( exchangeConfirmedMessage ) ) {
-            //System.out.println( "message = " + message );
-            //System.out.println( "expecting = " + exchangeConfirmedMessage );
+            System.out.println( "message = " + message );
+            System.out.println( "expecting = " + exchangeConfirmedMessage );
             // exchange is not sync with server, end conversion
             return;
         }
@@ -175,26 +230,52 @@ public class TcpClient {
         } else if ( message.equals( problemSizeChangedMessage ) ) {
             handleProblemSizeChanged();
         } else {
-            //System.out.println( "Unexpected message from server " + message );
+            System.out.println( "Unexpected message from server " + message );
         }
+    }
+
+    private static Object fromString( String s ) throws IOException ,
+                                                        ClassNotFoundException {
+        byte [] data = Base64.getDecoder().decode( s );
+        ObjectInputStream ois = new ObjectInputStream( new ByteArrayInputStream(  data ) );
+        Object o  = ois.readObject();
+        ois.close();
+        return o;
+    }
+
+    /** Write the object to a Base64 string. */
+    private static String toString( Serializable o ) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream( baos );
+        oos.writeObject( o );
+        oos.close();
+        return Base64.getEncoder().encodeToString(baos.toByteArray()); 
     }
 
     public void handleRequestGraph() {
         String message = "";
-        //System.out.println( "server request client side graph" );
-        write( new String[] { currentGraph } );
+        System.out.println( "server request client side graph" );
+
+        try {
+            write( new String[] { currentGraph, toString( this.currentMap ) } );
+        } catch( IOException i ){
+            System.out.println( "serialize failed" );
+            return;
+        }
         message = read();
+        // map does not change, therefore valid
+        validMap = true;
 
         if ( message.equals( errorMessage ) ) {
             // case A_0.2, case A_1.2
-            //System.out.println( "client side graph is corrupted or invalid" );
+            System.out.println( "client side graph is corrupted or invalid" );
             return;
         } else if ( message.equals( problemSizeChangedMessage ) ) {
             // case A_0.1
             handleProblemSizeChanged();
         } else if ( message.equals( tranmissionCompleteMessage ) ) {
             // case A_1.1
-            //System.out.println( "exchange complete" );
+            System.out.println( "exchange complete" );
         } else {
             unpextedMessage( tranmissionCompleteMessage, message );
         }
@@ -206,28 +287,30 @@ public class TcpClient {
         this.currentSize = Integer.parseInt( read() );
         this.cliqueSize = Long.parseLong( read() );
         this.currentGraph = read();
-        //System.out.println( "problem size not matched with server, now = " + this.currentSize );
+        readMap();
+        System.out.println( "problem size not matched with server, now = " + this.currentSize );
         message = read();
         if ( message.equals( tranmissionCompleteMessage ) ) {
-            //System.out.println( "exchange complete" );
+            System.out.println( "exchange complete" );
         } else {
             unpextedMessage( tranmissionCompleteMessage, message );
         }
     }
 
     public void unpextedMessage( String expecting, String got ) {
-        //System.out.println( "expecting " + expecting );
-        //System.out.println( "got " + got );
+        System.out.println( "expecting " + expecting );
+        System.out.println( "got " + got );
     }
 
     public void handleDeny() {
         String message = read();
         if ( message.equals( tieMessage ) ) {
-            //System.out.println( "server and client haave same clique" );
+            System.out.println( "server and client have same clique" );
         } else {
             this.cliqueSize = Long.parseLong( message );
             this.currentGraph = read();
-            //System.out.println( "server has better clique " + message );
+            readMap();
+            System.out.println( "server has better clique " + message );
         }
     }
 
@@ -247,7 +330,7 @@ public class TcpClient {
         try {
             return sockReader.readLine();
         } catch( IOException i ) {
-            //System.out.println( "failed to read from host" );
+            System.out.println( "failed to read from host" );
             i.printStackTrace();
             return readFailedMessage;
         }
@@ -263,8 +346,8 @@ public class TcpClient {
             }
             sockWriter.write( message.toString() );
             sockWriter.flush();
-        } catch( Exception i ) {
-            //System.out.println( "failed to send message to host" );
+        } catch( IOException i ) {
+            System.out.println( "failed to send message to host" );
             i.printStackTrace();
             return;
         }
@@ -275,7 +358,7 @@ public class TcpClient {
         try {
             sock.close();
         } catch( IOException i ) {
-            //System.out.println( "failed to close the connection with server" );
+            System.out.println( "failed to close the connection with server" );
             i.printStackTrace();
             return;
         }
@@ -283,27 +366,35 @@ public class TcpClient {
 
 
     public static void main( String[] args ) {
-        TcpClient client = new TcpClient( "128.111.84.201", 7788 );
+        /*
+        TcpClient client = new TcpClient( "127.0.0.1", 7788 );
         Random rand = new Random();
         int reduce = 0;
-        int currentClique = 500;
-        int [][] graph = new int[ 5 ][ 5 ];
-        client.run();
-        /*
-          regualr test
-        client.updateFromAlg( 6, 5, "0000000000000000000000000" );
-        client.updateFromAlg( 5, 5, "0000000000000000000000000" );
-        client.updateFromAlg( 5, 5, "0000000000000000000000000" );
-        client.updateFromAlg( 5, 4, "000000000000000000000000" );
-        client.updateFromAlg( 5, 4, "0000000000000000000000000" );
-        client.updateFromAlg( 5, 0, "0000000000000000000000000" );
-        client.updateFromAlg( 6, 100, "000000000000000000000000000000000000" );
-        */
-        client.updateFromAlg( 5, currentClique, graph );
+        int currentClique = 600;
+        int [][] graph = new int[ 306 ][ 306 ];
+        ConcurrentHashMap<Edge, AtomicLong> currentMap = new ConcurrentHashMap<Edge, AtomicLong>();
+        ConcurrentHashMap< UUID, Integer > temp = new ConcurrentHashMap< UUID, Integer >();
+        UUID uuid = UUID.randomUUID();
+        temp.put( uuid, new Integer( 1 ) );
+        currentMap.put( new Integer( 5 ), temp );
 
+        client.run();
+
+        client.updateFromAlg( 306, currentClique, graph, currentMap );
+
+        if ( client.getValidMap() ) {
+            System.out.println( "map is setted up" );
+        } else {
+            System.out.println( "not set up" );
+        }
+
+        currentMap = client.getMap();
+        System.out.println( currentMap.get( new Integer( 5 ) ) );
+
+        /*
         while ( true ) {
             try{
-                TimeUnit.SECONDS.sleep( 5 );
+                TimeUnit.SECONDS.sleep( 2 );
             } catch ( Exception e ) {
                 return;
             }
@@ -312,10 +403,12 @@ public class TcpClient {
             if ( currentClique <= 0 ) {
                 break;
             }
-            client.updateFromAlg( 5, currentClique, graph );
-        }
+            client.updateFromAlg( 306, currentClique, graph );
+            System.out.println( client.getAlpha() );
+            }
 
         client.close();
+        */
     }
 
 }
