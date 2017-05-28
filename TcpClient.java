@@ -1,4 +1,3 @@
-package search10;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.InputStreamReader;
@@ -12,6 +11,31 @@ import java.util.concurrent.*;
 import java.util.*;
 import java.io.*;
 import java.util.concurrent.atomic.AtomicLong;
+
+class Edge implements java.io.Serializable {
+    int node1;
+    int node2;
+    Edge(int node1, int node2) {
+        this.node1 = node1;
+        this.node2 = node2;
+    }
+    @Override
+    public boolean equals(Object o) {
+        if(!(o instanceof Edge)) {
+            return false;
+        }
+        Edge temp = (Edge)o;
+        return node1 == temp.node1 && node2 == temp.node2;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 79 * hash + this.node1;
+        hash = 79 * hash + this.node2;
+        return hash;
+    }
+}
 
 
 // look at the example at the main
@@ -83,6 +107,33 @@ public class TcpClient {
         write( new String[] { alphaRequest } );
         message = read();
         return Double.parseDouble( message );
+    }
+
+    String mapToString( ConcurrentHashMap<Edge, AtomicLong> map ) {
+        StringBuilder temp = new StringBuilder("");
+        for ( Map.Entry<Edge, AtomicLong> entry : map.entrySet() ) {
+            temp.append( Integer.toString( entry.getKey().node1 ) + "_" );
+            temp.append( Integer.toString( entry.getKey().node2 ) + "_" );
+            temp.append( Long.toString( entry.getValue().get() ) + "@" );
+        }
+        return temp.toString();
+    }
+
+    ConcurrentHashMap<Edge, AtomicLong> stringToMap( String s ) {
+        ConcurrentHashMap<Edge, AtomicLong> map = new ConcurrentHashMap<Edge, AtomicLong>();
+        String[] entries = s.split( "@" );
+        String[] nums;
+        Edge e;
+        AtomicLong al;
+
+        for ( String entry : entries ) {
+            System.out.println( entry );
+            nums = entry.split( "_" );
+            e = new Edge( Integer.parseInt( nums[ 0 ] ), Integer.parseInt( nums[ 1 ] ) );
+            al = new AtomicLong( Long.parseLong( nums[ 2 ] ) );
+            map.put( e, al );
+        }
+        return map;
     }
 
     private void readMap() {
@@ -366,6 +417,16 @@ public class TcpClient {
 
 
     public static void main( String[] args ) {
+        TcpClient client = new TcpClient( "127.0.0.1", 7788 );
+        ConcurrentHashMap<Edge, AtomicLong> map = new ConcurrentHashMap<Edge, AtomicLong>();
+        Edge e = new Edge( 1, 2 );
+        AtomicLong l = new AtomicLong( 3 );
+        map.put( e, l );
+        String s = client.mapToString( map );
+        map = client.stringToMap( s );
+        System.out.println( map.get( e ) );
+
+
         /*
         TcpClient client = new TcpClient( "127.0.0.1", 7788 );
         Random rand = new Random();
