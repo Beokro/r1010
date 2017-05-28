@@ -144,7 +144,7 @@ void convertStringToArray( string& line, int size, int* graph ) {
 int main() {
   int size;
   string line;
-  ifstream myfile ( "answer" );
+  ifstream myfile ( "tempFile" );
   int * graph;
   if ( myfile.is_open() )
     {
