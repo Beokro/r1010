@@ -11,6 +11,7 @@ import java.util.Random;
 import java.util.concurrent.*;
 import java.util.*;
 import java.io.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 
 // look at the example at the main
@@ -42,7 +43,7 @@ public class TcpClient {
     private int destPort;
     private int currentSize = 0;
     private long cliqueSize = Long.MAX_VALUE;
-    private ConcurrentHashMap< Integer, ConcurrentHashMap< UUID, Integer > > currentMap;
+    private ConcurrentHashMap<Edge, AtomicLong> currentMap;
     private boolean validMap = false;
     private String currentGraph = " ";
     private String backupAddr = " ";
@@ -73,7 +74,7 @@ public class TcpClient {
         return validMap;
     }
 
-    public ConcurrentHashMap< Integer, ConcurrentHashMap< UUID, Integer > > getMap() {
+    public ConcurrentHashMap<Edge, AtomicLong> getMap() {
         return currentMap;
     }
 
@@ -90,8 +91,7 @@ public class TcpClient {
             System.out.println( "get 1 for read\n" );
             validMap = true;
             try {
-                this.currentMap = ( ConcurrentHashMap< Integer,
-                                    ConcurrentHashMap< UUID, Integer > > )fromString( read() );
+                this.currentMap = ( ConcurrentHashMap<Edge, AtomicLong> )fromString( read() );
             } catch( IOException i ) {
                 System.out.println( "IOExpcetion fromString or cast to map failed" );
                 this.currentMap = null;
@@ -153,7 +153,7 @@ public class TcpClient {
     // if graph from update is invalid, graph will be empty
     // the reuslt graph return by getter will be all -1
     public void updateFromAlg( int problemSize, long cliqueSize, int[][] graph,
-                               ConcurrentHashMap< Integer, ConcurrentHashMap< UUID, Integer > > map) {
+                               ConcurrentHashMap<Edge, AtomicLong> map) {
         this.currentSize = problemSize;
         this.cliqueSize = cliqueSize;
         this.currentGraph = translateGraphToString( graph );
@@ -366,12 +366,13 @@ public class TcpClient {
 
 
     public static void main( String[] args ) {
+        /*
         TcpClient client = new TcpClient( "127.0.0.1", 7788 );
         Random rand = new Random();
         int reduce = 0;
         int currentClique = 600;
         int [][] graph = new int[ 306 ][ 306 ];
-        ConcurrentHashMap< Integer, ConcurrentHashMap< UUID, Integer > > currentMap = new ConcurrentHashMap< Integer, ConcurrentHashMap< UUID, Integer > >();
+        ConcurrentHashMap<Edge, AtomicLong> currentMap = new ConcurrentHashMap<Edge, AtomicLong>();
         ConcurrentHashMap< UUID, Integer > temp = new ConcurrentHashMap< UUID, Integer >();
         UUID uuid = UUID.randomUUID();
         temp.put( uuid, new Integer( 1 ) );
@@ -404,9 +405,10 @@ public class TcpClient {
             }
             client.updateFromAlg( 306, currentClique, graph );
             System.out.println( client.getAlpha() );
-            }*/
+            }
 
         client.close();
+        */
     }
 
 }
