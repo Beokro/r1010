@@ -13,6 +13,32 @@ import java.util.*;
 import java.io.*;
 import java.util.concurrent.atomic.AtomicLong;
 
+/*
+class Edge implements java.io.Serializable {
+    int node1;
+    int node2;
+    Edge(int node1, int node2) {
+        this.node1 = node1;
+        this.node2 = node2;
+    }
+    @Override
+    public boolean equals(Object o) {
+        if(!(o instanceof Edge)) {
+            return false;
+        }
+        Edge temp = (Edge)o;
+        return node1 == temp.node1 && node2 == temp.node2;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 5;
+        hash = 79 * hash + this.node1;
+        hash = 79 * hash + this.node2;
+        return hash;
+    }
+}
+*/
 
 // look at the example at the main
 // bascially call updateFromAlg( int problemSize, int cliqueSize, int[][] graph )
@@ -85,24 +111,38 @@ public class TcpClient {
         return Double.parseDouble( message );
     }
 
+    String mapToString( ConcurrentHashMap<Edge, AtomicLong> map ) {
+        StringBuilder temp = new StringBuilder("");
+        for ( Map.Entry<Edge, AtomicLong> entry : map.entrySet() ) {
+            temp.append( Integer.toString( entry.getKey().node1 ) + "_" );
+            temp.append( Integer.toString( entry.getKey().node2 ) + "_" );
+            temp.append( Long.toString( entry.getValue().get() ) + "@" );
+        }
+        return temp.toString();
+    }
+
+    ConcurrentHashMap<Edge, AtomicLong> stringToMap( String s ) {
+        ConcurrentHashMap<Edge, AtomicLong> map = new ConcurrentHashMap<Edge, AtomicLong>();
+        String[] entries = s.split( "@" );
+        String[] nums;
+        Edge e;
+        AtomicLong al;
+
+        for ( String entry : entries ) {
+            nums = entry.split( "_" );
+            e = new Edge( Integer.parseInt( nums[ 0 ] ), Integer.parseInt( nums[ 1 ] ) );
+            al = new AtomicLong( Long.parseLong( nums[ 2 ] ) );
+            map.put( e, al );
+        }
+        return map;
+    }
+
     private void readMap() {
         String val = read();
         if ( val.equals( "1" ) ) {
             System.out.println( "get 1 for read\n" );
             validMap = true;
-            try {
-                this.currentMap = ( ConcurrentHashMap<Edge, AtomicLong> )fromString( read() );
-            } catch( IOException i ) {
-                System.out.println( "IOExpcetion fromString or cast to map failed" );
-                this.currentMap = null;
-                validMap = false;
-                return;
-            } catch ( ClassNotFoundException i ) {
-                System.out.println( "ClassNotFoundExpcetion fromString or cast to map failed" );
-                this.currentMap = null;
-                validMap = false;
-                return;
-            }
+            this.currentMap = stringToMap( read() );
         } else {
             System.out.println( "get 0 for read\n" );
             validMap = false;
@@ -256,12 +296,7 @@ public class TcpClient {
         String message = "";
         System.out.println( "server request client side graph" );
 
-        try {
-            write( new String[] { currentGraph, toString( this.currentMap ) } );
-        } catch( IOException i ){
-            System.out.println( "serialize failed" );
-            return;
-        }
+        write( new String[] { currentGraph, mapToString( this.currentMap ) } );
         message = read();
         // map does not change, therefore valid
         validMap = true;
@@ -372,15 +407,10 @@ public class TcpClient {
         int reduce = 0;
         int currentClique = 600;
         int [][] graph = new int[ 306 ][ 306 ];
-        ConcurrentHashMap<Edge, AtomicLong> currentMap = new ConcurrentHashMap<Edge, AtomicLong>();
-        ConcurrentHashMap< UUID, Integer > temp = new ConcurrentHashMap< UUID, Integer >();
-        UUID uuid = UUID.randomUUID();
-        temp.put( uuid, new Integer( 1 ) );
-        currentMap.put( new Integer( 5 ), temp );
-
-        client.run();
-
-        client.updateFromAlg( 306, currentClique, graph, currentMap );
+        ConcurrentHashMap<Edge, AtomicLong> map = new ConcurrentHashMap<Edge, AtomicLong>();
+        Edge e = new Edge( 1, 2 );
+        AtomicLong l = new AtomicLong( 3 );
+        map.put( e, l );
 
         if ( client.getValidMap() ) {
             System.out.println( "map is setted up" );
@@ -388,8 +418,17 @@ public class TcpClient {
             System.out.println( "not set up" );
         }
 
-        currentMap = client.getMap();
-        System.out.println( currentMap.get( new Integer( 5 ) ) );
+
+        client.updateFromAlg( 306, currentClique, graph, map );
+
+        if ( client.getValidMap() ) {
+            System.out.println( "map is setted up" );
+        } else {
+            System.out.println( "not set up" );
+        }
+
+        map = client.getMap();
+        System.out.println( map.get( e ) );
 
         /*
         while ( true ) {
