@@ -293,9 +293,11 @@ public class Alg {
         }
         int cores = Runtime.getRuntime().availableProcessors();
         current = new AtomicLong(client.getCliqueSize());
+        client.updateFromAlg(currentSize, current.get(), graph2d, (ConcurrentHashMap)edgeToClique);
+        long lastTime = client.getCliqueSize();
+        long thisTime = Long.MAX_VALUE;
         while(current.get() != 0) {
             bestOptions = new ConcurrentSkipListSet<ChangeAndResult>(new ChangeAndResult());
-            client.updateFromAlg(currentSize, current.get(), graph2d, (ConcurrentHashMap)edgeToClique);
             saveEdgeToClique();
             List<Thread> workers = new ArrayList<Thread>();
             for(int i = 0; i < cores; i++) {
@@ -335,14 +337,14 @@ public class Alg {
                 return; //???
             }
             addHistory();
-            long lastTime = client.getCliqueSize();
             client.updateFromAlg(currentSize, current.get(),
                                     graph2d, (ConcurrentHashMap)edgeToClique);
-            long thisTime = client.getCliqueSize();
+            thisTime = client.getCliqueSize();
             
             if(useServer(currentSize, lastTime, thisTime)) {
                 return;
-            } 
+            }
+            lastTime = thisTime;
         }
     }
     
