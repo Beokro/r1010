@@ -320,25 +320,19 @@ public class Alg {
             }
             edgeToClique = save;
             Iterator<ChangeAndResult> it = bestOptions.iterator();
-            /*
-            ChangeAndResult first = it.next();
-            if(first.Dcliques >= 0) {
-                Random rand = new Random(System.currentTimeMillis());
-                int nextN = rand.nextInt(bestOptions.size() / 2);
-                while(nextN > 0) {
-                    it.next();
-                    nextN --;
-                }
-            }
-            */
+            boolean hasResult = false;
             while(it.hasNext()) {
                 ChangeAndResult best = it.next();
                 if(!hasVisited(best.change)) {
                     flipEdge(best.change);
                     current.set(current.get() + best.Dcliques);
                     updateEdgeToClique(best.change);
+                    hasResult = true;
                     break;
                 }
+            }
+            if(!hasResult) {
+                return; //???
             }
             addHistory();
             long lastTime = client.getCliqueSize();
