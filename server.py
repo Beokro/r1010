@@ -826,8 +826,8 @@ class TcpServer( object ):
                   str( self.currentSize ),
                   str( self.cliqueSize ),
                   self.defaultGraph( useLastGraphAsBase = True ),
-                  self.isSetup,
-                  self.mapString,
+                  '0',
+                  ' ',
                   tranmissionCompleteMessage ]
         self.sendPacket( client, datas )
         return
