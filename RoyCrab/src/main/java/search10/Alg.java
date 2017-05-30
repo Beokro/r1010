@@ -260,7 +260,7 @@ public class Alg {
                 */
                 long Dcliques = countCliquesSub(flip(e), false, null) - entry.getValue().get();
                 bestOptions.add(new ChangeAndResult(e, Dcliques));
-                if(Dcliques < 0) {
+                if(Dcliques < 0 && !hasVisited(e)) {
                     synchronized(Alg.lock1) {
                         edgeToClique.clear();
                     }
@@ -272,6 +272,20 @@ public class Alg {
         }
     }
     
+    private void getRandomNeighbor() {
+        Random rand = new Random(System.currentTimeMillis());
+        Edge edge = new Edge(rand.nextInt(currentSize), rand.nextInt(currentSize));
+        if(!hasEdge(edge)) {
+            edge = flip(edge);
+        }
+        applyChange(edge);
+    }
+    
+    private void applyChange(Edge edge) {
+        flipEdge(edge);
+        updateEdgeToClique(edge);
+    }
+
     private void saveEdgeToClique() {
         save = new ConcurrentHashMap<>();
         for(Map.Entry<Edge, AtomicLong> entry : edgeToClique.entrySet()) {
@@ -326,14 +340,13 @@ public class Alg {
             while(it.hasNext()) {
                 ChangeAndResult best = it.next();
                 if(!hasVisited(best.change)) {
-                    flipEdge(best.change);
-                    current.set(current.get() + best.Dcliques);
-                    updateEdgeToClique(best.change);
+                    applyChange(best.change);
                     hasResult = true;
                     break;
                 }
             }
             if(!hasResult) {
+                getRandomNeighbor();
                 return; //???
             }
             addHistory();
@@ -383,7 +396,7 @@ public class Alg {
         Map<Edge, Long> plus = new HashMap<>();
         Map<Integer, Long> nodesMinus = new HashMap<>();
         Map<Integer, Long> nodesPlus = new HashMap<>();
-        countCliquesSub(edge, true, minus);
+        long oldCount = countCliquesSub(edge, true, minus);
         long newCount = countCliquesSub(flip, true, plus);
         for(Map.Entry<Edge, Long> entry : minus.entrySet()) {
             changeEdgeToClique(entry.getKey(), -entry.getValue());
@@ -417,6 +430,7 @@ public class Alg {
             changeEdgeToClique(temp2, entry.getValue() / 7);
         }
         edgeToClique.put(flip, new AtomicLong(newCount));
+        current.set(current.get() - oldCount);
     }
     /*
     static void nodeToEdge(Map<Integer, Set<Long>> nodeToClique, Map<Edge, Long> edgeToClique) {
