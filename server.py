@@ -304,7 +304,7 @@ class TcpServer( object ):
                     print 'deadlock breaker caused exception'
             if self.lockID != '-1':
                 self.lockChecker = True
-            time.sleep( 60 )
+            time.sleep( 30 )
 
     def saveTempAnswer( self ):
         global answerSaveTime
@@ -826,8 +826,8 @@ class TcpServer( object ):
                   str( self.currentSize ),
                   str( self.cliqueSize ),
                   self.defaultGraph( useLastGraphAsBase = True ),
-                  self.isSetup,
-                  self.mapString,
+                  '0',
+                  ' ',
                   tranmissionCompleteMessage ]
         self.sendPacket( client, datas )
         return
