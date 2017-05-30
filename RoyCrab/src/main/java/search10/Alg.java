@@ -213,24 +213,6 @@ public class Alg {
                 return true;
             }
         }
-        /*
-        Random rand = new Random(System.currentTimeMillis());
-        if(rand.nextInt(1000) == 1) {
-            Edge edge = new Edge(rand.nextInt(currentSize), rand.nextInt(currentSize));
-            if(!hasEdge(edge)) {
-                edge = flip(edge);
-            }
-            long minus = 0;
-            if(edgeToClique.get(edge) != null) {
-                minus = edgeToClique.get(edge).get();
-            }
-            long Dcliques = countCliquesSub(flip(edge), false, null) - minus;
-            flipEdge(edge);
-            current.set(current.get() + Dcliques);
-            updateEdgeToClique(edge);            
-        }
-        */
-        // else server is stuck so we use our graph
         return false;
     }
     
@@ -347,7 +329,6 @@ public class Alg {
             }
             if(!hasResult) {
                 getRandomNeighbor();
-                return; //???
             }
             addHistory();
             client.updateFromAlg(currentSize, current.get(),
@@ -419,7 +400,6 @@ public class Alg {
                                   Math.max(edge.node2, entry.getKey()));
             changeEdgeToClique(temp1, -entry.getValue() / 7);
             changeEdgeToClique(temp2, -entry.getValue() / 7);
-            
         }
         for(Map.Entry<Integer, Long> entry : nodesPlus.entrySet()) {
             Edge temp1 = new Edge(Math.min(flip.node1, entry.getKey()),
@@ -429,78 +409,15 @@ public class Alg {
             changeEdgeToClique(temp1, entry.getValue() / 7);
             changeEdgeToClique(temp2, entry.getValue() / 7);
         }
-        edgeToClique.put(flip, new AtomicLong(newCount));
-        current.set(current.get() - oldCount);
+        if(newCount != 0) {
+            edgeToClique.put(flip, new AtomicLong(newCount));
+        }
+        current.set(current.get() + newCount - oldCount);
     }
-    /*
-    static void nodeToEdge(Map<Integer, Set<Long>> nodeToClique, Map<Edge, Long> edgeToClique) {
-        List<Map.Entry<Integer, Set<Long>>> list = new ArrayList<>(nodeToClique.entrySet());
-        for(int i = 0; i < list.size(); i++) {
-            for(int j = i + 1; j < list.size(); j++) {
-                long count = 0;
-                Set<Long> toIt = list.get(i).getValue();
-                Set<Long> toCheck = list.get(j).getValue();
-                if(toIt.size() > toCheck.size()) {
-                    Set<Long> temp = toIt;
-                    toIt = toCheck;
-                    toCheck = temp;
-                }
-                for(Long item : toIt) {
-                    if(toCheck.contains(item)) {
-                        count++;
-                    }
-                }
-                if(count != 0) {
-                    int node1 = list.get(i).getKey();
-                    int node2 = list.get(j).getKey();
-                    Edge edge = new Edge(Math.min(node1, node2),
-                                         Math.max(node1, node2));
-                    edgeToClique.putIfAbsent(edge, new Long(0));
-                    edgeToClique.put(edge, edgeToClique.get(edge) + count);
-                }
-            }
-        }
-    }
-    
-    static void recordNodes(CliqueId counter, int node1, String node2, int[] indexes,
-            List<String> neighbors, Map<Integer, Set<Long>> nodeToClique) {
-        List<Integer> nodes =  new ArrayList<Integer>();
-        nodes.add(node1);
-        nodes.add(Integer.parseInt(node2));
-        for(int i = 0; i < indexes.length; i++) {
-            String node = neighbors.get(indexes[i]);
-            nodes.add(Integer.parseInt(node));
-        }
-        Collections.sort(nodes);
-        for(Integer node : nodes) {
-            nodeToClique.putIfAbsent(node, new HashSet<>());
-            nodeToClique.get(node).add(counter.count);
-        }
-        counter.count ++;
-    }
-    
-    static void recordNodes(CliqueId counter, String node, int[] indexes,
-            List<String> neighbors, Map<Integer, Set<Long>> nodeToClique, boolean change) {
-        if(!change) {
-            return;
-        }
-        List<Integer> nodes =  new ArrayList<Integer>();
-        nodes.add(Integer.parseInt(node));
-        for(int i = 0; i < indexes.length; i++) {
-            String temp = neighbors.get(indexes[i]);
-            nodes.add(Integer.parseInt(temp));
-        }
-        Collections.sort(nodes);
-        for(Integer temp : nodes) {
-            nodeToClique.putIfAbsent(temp, new HashSet<>());
-            nodeToClique.get(temp).add(counter.count);
-        }
-        counter.count ++;
-    }
-    */
+
     static void recordEdges(int node1, String node2, int[] indexes,
                         List<String> neighbors, Map<Edge, Long> edgeToClique) {
-        List<Integer> nodes =  new ArrayList<Integer>();
+        List<Integer> nodes = new ArrayList<Integer>();
         nodes.add(node1);
         nodes.add(Integer.parseInt(node2));
         for(int i = 0; i < indexes.length; i++) {
@@ -702,16 +619,13 @@ public class Alg {
             for(int j = i + 1; j < intersect.size(); j++) {
                 int node1 = intersect.get(i);
                 int node2 = intersect.get(j);
-                if(node1 >= client.getCurrentSize()) {
-                    node1 -= client.getCurrentSize();
-                    node2 -= client.getCurrentSize();
-                    if(graph2d[Math.min(node1, node2)][Math.max(node1, node2)] == 0) {
-                        g.addEdge(Integer.toString(node1 + client.getCurrentSize()), Integer.toString(node2 + client.getCurrentSize()));
-                    }
-                } else {
-                    if(graph2d[Math.min(node1, node2)][Math.max(node1, node2)] == 1) {
-                        g.addEdge(Integer.toString(node1), Integer.toString(node2));
-                    }
+                if(node1 > node2) {
+                    int temp = node1;
+                    node1 = node2;
+                    node2 = temp;
+                }
+                if(hasEdge(new Edge(node1, node2))) {
+                    g.addEdge(Integer.toString(node1), Integer.toString(node2));
                 }
             }
         }
