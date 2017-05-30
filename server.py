@@ -304,7 +304,7 @@ class TcpServer( object ):
                     print 'deadlock breaker caused exception'
             if self.lockID != '-1':
                 self.lockChecker = True
-            time.sleep( 30 )
+            time.sleep( 60 )
 
     def saveTempAnswer( self ):
         global answerSaveTime
