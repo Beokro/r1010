@@ -295,6 +295,16 @@ public class Alg {
         while(current.get() != 0) {
             bestOptions = new ConcurrentSkipListSet<ChangeAndResult>(new ChangeAndResult());
             saveEdgeToClique();
+            /*
+            createGraph();
+            long haha = countCliques();
+            assert(current.get() == haha);
+            assert(save.size() == edgeToClique.size());
+            for(Map.Entry<Edge, AtomicLong> entry : edgeToClique.entrySet()) {
+                assert(save.containsKey(entry.getKey()));
+                assert(save.get(entry.getKey()).get() == entry.getValue().get());
+            }
+            */
             List<Thread> workers = new ArrayList<Thread>();
             for(int i = 0; i < cores; i++) {
                 workers.add(new AlgThread(edgeToClique));
