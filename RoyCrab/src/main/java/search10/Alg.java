@@ -342,6 +342,7 @@ public class Alg {
                 getRandomNeighbor();
             }
             addHistory();
+            System.out.println("client's clique size: " + current.get());
             client.updateFromAlg(currentSize, current.get(),
                                     graph2d, (ConcurrentHashMap)edgeToClique);
             thisTime = client.getCliqueSize();
