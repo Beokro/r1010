@@ -157,7 +157,6 @@ public class Alg {
     static Set<ChangeAndResult> bestOptions;
     double globalBetaBase = 10;
     double globalGamma = 0.006;
-    static long cliqueId = 0;
     
     static RemoteBloomFilter history;
     static ConcurrentMap<Edge, AtomicLong> edgeToClique;
@@ -289,7 +288,7 @@ public class Alg {
         }
         int cores = Runtime.getRuntime().availableProcessors();
         current = new AtomicLong(client.getCliqueSize());
-        client.updateFromAlg(currentSize, current.get(), graph2d, (ConcurrentHashMap)edgeToClique);
+        //client.updateFromAlg(currentSize, current.get(), graph2d, (ConcurrentHashMap)edgeToClique);
         long lastTime = client.getCliqueSize();
         long thisTime = Long.MAX_VALUE;
         while(current.get() != 0) {
