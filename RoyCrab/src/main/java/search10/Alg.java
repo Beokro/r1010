@@ -208,11 +208,11 @@ public class Alg {
         if(thisTime == 0) { // someone has got 0
             return true;
         }
-        if(thisTime < lastTime) { // server not stuck and is not 0
-            if(current.get() > thisTime) { // and ours is worse than server's
-                return true;
-            }
+        if(thisTime < lastTime || current.get() < lastTime) {
+            return true; // server not stuck or we have a better answer
         }
+        // don't need to communicate with server only when server is stuck
+        // and we don't have a better answer
         return false;
     }
     
