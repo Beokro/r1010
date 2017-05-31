@@ -255,7 +255,17 @@ public class Alg {
     
     private void getRandomNeighbor() {
         Random rand = new Random(System.currentTimeMillis());
-        Edge edge = new Edge(rand.nextInt(currentSize), rand.nextInt(currentSize));
+        Edge edge = null;
+        int node1 = rand.nextInt(currentSize);
+        int node2 = rand.nextInt(currentSize);
+        while(node2 == node1) {
+            node2 = rand.nextInt(currentSize);
+        }
+        if(node1 > node2) {
+            edge = new Edge(node2, node1);
+        } else {
+            edge = new Edge(node1, node2);
+        }
         if(!hasEdge(edge)) {
             edge = flip(edge);
         }
@@ -290,7 +300,6 @@ public class Alg {
         edgeToClique = (ConcurrentMap)client.getMap();
         int cores = Runtime.getRuntime().availableProcessors();
         current = new AtomicLong(client.getCliqueSize());
-        //client.updateFromAlg(currentSize, current.get(), graph2d, (ConcurrentHashMap)edgeToClique);
         long lastTime = client.getCliqueSize();
         long thisTime = Long.MAX_VALUE;
         while(current.get() != 0) {
@@ -627,15 +636,11 @@ public class Alg {
         List<Integer> intersect = getIntersectNodes(edge);
         AdjListGraph g = new AdjListGraph();
         g.edgeToClique = edgeToClique;
+        Collections.sort(intersect);
         for(int i = 0; i < intersect.size(); i++) {
             for(int j = i + 1; j < intersect.size(); j++) {
                 int node1 = intersect.get(i);
                 int node2 = intersect.get(j);
-                if(node1 > node2) {
-                    int temp = node1;
-                    node1 = node2;
-                    node2 = temp;
-                }
                 if(hasEdge(new Edge(node1, node2))) {
                     g.addEdge(Integer.toString(node1), Integer.toString(node2));
                 }

@@ -159,10 +159,8 @@ public class AdjListGraph {
 							} else {
                                                                 countRunning++;
                                                                 if(this.node != -1) {
-                                                                    //Alg.recordNodes(counter, this.node, a, indexes, neighbors, nodeToClique);
                                                                     Alg.recordEdges(this.node, a, indexes, neighbors, edgeToClique);
                                                                 } else {
-                                                                    //Alg.recordNodes(counter, a, indexes, neighbors, nodeToClique, change);
                                                                     Alg.recordEdges(a, indexes, neighbors, edgeToClique, change);
                                                                 }
 								indexes[fixing]++;
@@ -181,7 +179,6 @@ public class AdjListGraph {
 				}
 			}
 		}
-                //Alg.nodeToEdge(nodeToClique, edgeToClique);
 		return countRunning;
 
 	}
