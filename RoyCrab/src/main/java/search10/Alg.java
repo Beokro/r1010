@@ -485,12 +485,13 @@ public class Alg {
         } catch(RemoteException e) {
             e.printStackTrace();
         }
+        Random rand = new Random(System.currentTimeMillis());
         List<Integer> nodes = new ArrayList<>();
         for(int i = 0; i < currentSize; i++) {
             nodes.add(i);
         }
         for(int i = 0; i < NUM_ISO; i++) {
-            Collections.shuffle(nodes);
+            Collections.shuffle(nodes, rand);
             int[][] graph = new int[currentSize][];
             for(int j = 0; j < currentSize; j++) {
                 graph[j] = new int[currentSize];
