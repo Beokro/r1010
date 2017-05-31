@@ -157,6 +157,7 @@ public class Alg {
     static Set<ChangeAndResult> bestOptions;
     double globalBetaBase = 10;
     double globalGamma = 0.006;
+    static int NUM_ISO = 100;
     
     static RemoteBloomFilter history;
     static ConcurrentMap<Edge, AtomicLong> edgeToClique;
@@ -479,10 +480,29 @@ public class Alg {
     }
     
     private void addHistory() {
-        try{
+        try {
             history.addHistory(graph2d);
         } catch(RemoteException e) {
             e.printStackTrace();
+        }
+        List<Integer> nodes = new ArrayList<>();
+        for(int i = 0; i < currentSize; i++) {
+            nodes.add(i);
+        }
+        for(int i = 0; i < NUM_ISO; i++) {
+            Collections.shuffle(nodes);
+            int[][] graph = new int[currentSize][];
+            for(int j = 0; j < currentSize; j++) {
+                graph[j] = new int[currentSize];
+                for(int k = 0; k < currentSize; k++) {
+                    graph[j][k] = graph2d[nodes.get(j)][nodes.get(k)];
+                }
+            }
+            try{
+                history.addHistory(graph);
+            } catch(RemoteException e) {
+                e.printStackTrace();
+            }
         }
     }
     /*
