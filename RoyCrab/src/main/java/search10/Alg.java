@@ -157,7 +157,7 @@ public class Alg {
     static Set<ChangeAndResult> bestOptions;
     double globalBetaBase = 10;
     double globalGamma = 0.006;
-    static int NUM_ISO = 100;
+    static int NUM_ISO = 10;
     
     static RemoteBloomFilter history;
     static ConcurrentMap<Edge, AtomicLong> edgeToClique;
