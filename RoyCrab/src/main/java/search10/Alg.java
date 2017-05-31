@@ -200,8 +200,9 @@ public class Alg {
         return notAccept(globalBetaBase, globalGamma, cliques, min, min);
     }
     
-    private boolean useServer(int currentSize, long lastTime, long thisTime) {
-        if(currentSize < client.getCurrentSize()) { // move on to next step
+    private boolean useServer(int currentSize, int serverCurrentSize,
+                                                long lastTime, long thisTime) {
+        if(currentSize < serverCurrentSize) { // move on to next step
             return true;
         }
         if(thisTime == 0) { // someone has got 0
@@ -352,15 +353,16 @@ public class Alg {
             }
             addHistory();
             System.out.println("client's clique size: " + current.get());
-            client.updateFromAlg(currentSize, current.get(),
-                                    graph2d, (ConcurrentHashMap)edgeToClique);
-            thisTime = client.getCliqueSize();
+            long[] sizeAndCliques = client.getServerCli();
+            thisTime = sizeAndCliques[1];
             
-            if(useServer(currentSize, lastTime, thisTime)) {
-                return;
+            if(useServer(currentSize, (int)sizeAndCliques[0], lastTime, thisTime)) {
+                break;
             }
             lastTime = thisTime;
         }
+        client.updateFromAlg(currentSize, current.get(),
+                                    graph2d, (ConcurrentHashMap)edgeToClique);
     }
     
     Edge flip(Edge input) {
@@ -684,7 +686,6 @@ public class Alg {
             }
             excalibur = new Alg(serverIp, bloomFilterIp);
             excalibur.start();
-            
         }
     }
 }
