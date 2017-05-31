@@ -63,6 +63,7 @@ public class TcpClient {
     static final String readFailedMessage = "readFailed";
     static final String clientClaimMessage = "claimClient";
     static final String alphaRequest = "alphaReq";
+    static final String cliRequest = "cliReq";
 
     private String destHost;
     private int destPort;
@@ -108,6 +109,15 @@ public class TcpClient {
         write( new String[] { alphaRequest } );
         message = read();
         return Double.parseDouble( message );
+    }
+
+    public  long[] getServerCli() {
+        long serverCurrentSize;
+        long serverCliSize;
+        write( new String[] { cliRequest } );
+        serverCurrentSize = Long.parseLong( read() );
+        serverCliSize = Long.parseLong( read() );
+        return new long[] { serverCurrentSize, serverCliSize };
     }
 
     String mapToString( ConcurrentHashMap<Edge, AtomicLong> map ) {
@@ -411,6 +421,9 @@ public class TcpClient {
         AtomicLong l = new AtomicLong( 3 );
         map.put( e, l );
 
+        long[] temp = client.getServerCli();
+        System.out.println( temp[ 0 ] );
+        System.out.println( temp[ 1 ] );
         if ( client.getValidMap() ) {
             System.out.println( "map is setted up" );
         } else {
@@ -419,6 +432,10 @@ public class TcpClient {
 
 
         client.updateFromAlg( 306, currentClique, graph, map );
+
+        temp = client.getServerCli();
+        System.out.println( temp[ 0 ] );
+        System.out.println( temp[ 1 ] );
 
         if ( client.getValidMap() ) {
             System.out.println( "map is setted up" );

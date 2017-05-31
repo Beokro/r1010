@@ -64,6 +64,7 @@ public class TcpClient {
     static final String readFailedMessage = "readFailed";
     static final String clientClaimMessage = "claimClient";
     static final String alphaRequest = "alphaReq";
+    static final String cliRequest = "cliReq";
 
     private String destHost;
     private int destPort;
@@ -109,6 +110,15 @@ public class TcpClient {
         write( new String[] { alphaRequest } );
         message = read();
         return Double.parseDouble( message );
+    }
+
+    public  long[] getServerCli() {
+        long serverCurrentSize;
+        long serverCliSize;
+        write( new String[] { cliRequest } );
+        serverCurrentSize = Long.parseLong( read() );
+        serverCliSize = Long.parseLong( read() );
+        return new long[] { serverCurrentSize, serverCliSize };
     }
 
     String mapToString( ConcurrentHashMap<Edge, AtomicLong> map ) {

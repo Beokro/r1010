@@ -27,6 +27,7 @@ serverClaimMessage = 'claimServer'
 syncRequestMessage = 'syncReq'
 syncCompleteMessage = 'syncCom'
 alphaRequest = 'alphaReq'
+cliRequest = 'cliReq'
 firstBackup = 'first'
 normalBackup = 'normal'
 lastAnswerRequest = 'lastAnsReq'
@@ -652,6 +653,7 @@ class TcpServer( object ):
         global exchangeStartMessage
         global exchangeConfirmedMessage
         global alphaRequest
+        global cliRequest
         # matrix received is at most size * size big, give some extra jic
         recvSize = 0
         clientProblemSize = -1
@@ -662,6 +664,15 @@ class TcpServer( object ):
             # just respond with the aphs
             self.sendPacket( client, [ self.alpha ] )
             return
+
+        if data == cliRequest:
+            self.getLock( clientID )
+            # just respond with the aphs
+            self.sendPacket( client, [ self.currentSize,
+                                       self.cliqueSize ] )
+            self.releaseLock()
+            return
+
 
         # make sure the data server receiviing is what it is expecting
         if data != exchangeStartMessage:
