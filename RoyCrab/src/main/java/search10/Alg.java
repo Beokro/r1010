@@ -275,17 +275,19 @@ public class Alg {
     }
     
     public void start() {
-        graph2d = client.getGraph();
-        currentSize = client.getCurrentSize();
         if(!client.getValidMap()) {
+            graph2d = client.getGraph();
+            currentSize = client.getCurrentSize();
             createGraph();
             edgeToClique = new ConcurrentHashMap<>();
             current = new AtomicLong(countCliques());
             client.updateFromAlg(client.getCurrentSize(), current.get(),
                                     graph2d, (ConcurrentHashMap)edgeToClique);
-        } else {
-            edgeToClique = (ConcurrentMap)client.getMap();
+            
         }
+        graph2d = client.getGraph();
+        currentSize = client.getCurrentSize();
+        edgeToClique = (ConcurrentMap)client.getMap();
         int cores = Runtime.getRuntime().availableProcessors();
         current = new AtomicLong(client.getCliqueSize());
         //client.updateFromAlg(currentSize, current.get(), graph2d, (ConcurrentHashMap)edgeToClique);
