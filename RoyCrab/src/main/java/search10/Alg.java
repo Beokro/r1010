@@ -439,6 +439,16 @@ public class Alg {
         current.set(current.get() + newCount - oldCount);
     }
 
+    static void recordEdges(List<Integer> nodes, Map<Edge, Long> edgeToClique) {
+        for(int i = 0; i < nodes.size(); i++) {
+            for(int j = i + 1; j < nodes.size(); j++) {
+                Edge edge = new Edge(nodes.get(i), nodes.get(j));
+                edgeToClique.putIfAbsent(edge, new Long(0));
+                edgeToClique.put(edge, edgeToClique.get(edge) + 1);
+            }
+        }
+    }
+    
     static void recordEdges(int node1, String node2, int[] indexes,
                         List<String> neighbors, Map<Edge, Long> edgeToClique) {
         List<Integer> nodes = new ArrayList<Integer>();

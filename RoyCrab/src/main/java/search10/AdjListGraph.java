@@ -27,7 +27,6 @@ public class AdjListGraph {
 	private long orientedSize=0;
         public int node = -1;
         public Map<Edge, Long> edgeToClique;
-        public Map<Integer, Set<Long>> nodeToClique = new HashMap<>();
         
 	HashMap<String, HashSet<String>> graph = new HashMap<String, HashSet<String>>();  
 	HashMap<String, Integer> degrees =new HashMap<String, Integer>();
