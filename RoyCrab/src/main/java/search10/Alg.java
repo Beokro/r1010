@@ -495,6 +495,7 @@ public class Alg {
         } catch(RemoteException e) {
             e.printStackTrace();
         }
+        /*
         Random rand = new Random(System.currentTimeMillis());
         List<Integer> nodes = new ArrayList<>();
         for(int i = 0; i < currentSize; i++) {
@@ -514,7 +515,7 @@ public class Alg {
             } catch(RemoteException e) {
                 e.printStackTrace();
             }
-        }
+        }*/
     }
     /*
     static synchronized UUID nextCliqueId() {
