@@ -4,7 +4,30 @@
 2. server will listen to a selected port and wait for tcp connection from client. Upon receive the connection, it will start a thread to handle the client
 
 3. default current graph is ' '
-4. Be aware that all sequential message is send as a long message separated by '\n'
+4. default map is ' '
+5. default cliquesize is long_max
+6. defualt port number is 7788
+7. server will read from tempFile and use that graph at start up unless server use -n flag. If -n flag is used, user must also use -c flag follow with a number to tell server the currentSize.
+8. be aware that all sequential message is send as a long message separated by '\n'
+
+# Usage
+
+* python server.py [-h] [-p portnumber] [-t timeout] [-l logDir] [-a destAddr] [-d destPort] [-b] [-c currentsize] [-n]
+* -h               help, print out the usage of server
+* -p portNumber    port that server will listen for incoming connection
+* -t timeout       set the timeout of server, not implemented
+* -l logDir        change the log file name, defualt for main server is server.log. Default for backup server is backup.log
+* -a destAddr      main server's ip address, only used if server is a backup server
+* -d destPort      main server's port, only used if server is a backup server
+* -b               backup server
+* -c currentSize   specifiy the currentsize of the server, only used if -n flag is used
+* -n               not read from tempfile flag. must be used with -c flag
+
+# Important files
+
+* answer - record all of the answers found
+* newAnswer - only record the most recent answer
+* tempFile - record the graph that user currently working on
 
 # Server Client Protocol 
             Clinet -> I am a client

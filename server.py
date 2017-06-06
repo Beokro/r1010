@@ -172,7 +172,6 @@ class TcpServer( object ):
 
         content = [ x.strip() for x in content ]
         listSize = len( content )
-        print listSize
         self.lastResult = int( content[ listSize - 4 ] )
         self.lastGraph = content[ listSize - 3 ]
 
@@ -187,12 +186,10 @@ class TcpServer( object ):
 
         if self.lastResult > target - 1:
             print 'random generate targe = ' + str( target )
-            print 'do not start client until generation is done'
             return self.defaultGraph( rand = True )
         else:
             self.currentGraph = content[ 1 ]
             print 'use answer, generate graph for ' + str( self.currentSize )
-            print 'do not start client until generation is done'
             return self.defaultGraph( useLastGraphAsBase = True )
 
     def createNewAnswer( self ):
@@ -235,23 +232,18 @@ class TcpServer( object ):
             while index < num:
                 res.append( str( randint( 0, 1 ) ) )
                 index += 1
-            print 'generation complete'
             return ''.join( res )
         else:
             res = ''
             index = 0
             appendNum = self.currentSize - self.lastResult
-            print 'start wrap'
             if useLastGraphAsBase:
                 glists = list( chunks( self.lastGraph ,  self.lastResult ) )
-                print len( glists )
             else:
                 glists = list( chunks( self.currentGraph ,  self.currentSize - 1 ) )
-            print 'end wrap'
             for g in glists:
                 res += g + generateRandomNumber( appendNum )
             res += generateRandomNumber( self.currentSize )
-            print 'generation complete'
             return res
 
     def appendCliqueRecord( self, clique ):
@@ -264,7 +256,6 @@ class TcpServer( object ):
             except:
                 self.cliqueRecord = []
                 self.cliqueRecordCount = 0
-            print 'new alpha = ' + str( self.alpha )
             self.cliqueRecord = []
             self.cliqueRecordCount = 0
 
@@ -472,7 +463,6 @@ class TcpServer( object ):
 
 
     def handleClient( self, client, address, clientID ):
-        print 'here'
         global serverClaimMessage
         global clientClaimMessage
         self.doLogging( 'new connection establish', clientID )
@@ -893,7 +883,7 @@ class TcpServer( object ):
         self.lock.release()
 
 def usage():
-    print 'python server.py [-h] [-p portnumber] [-t timeout] [-l logDir] [-a destAddr] [-d destPort] [-b] [-r]'
+    print 'python server.py [-h] [-p portnumber] [-t timeout] [-l logDir] [-a destAddr] [-d destPort] [-b] [-c currentsize] [-n]'
 
 
 if __name__ == "__main__":
