@@ -39,11 +39,8 @@
             Server -> isMapValid
             Server -> map
 
-Alpha Request
-            Client -> Alpha Request message
-            Server -> Alpha
 
-Loop Start
+## Loop Start
             Client -> exchange start request message
             Server -> exchange start confirmed message
             Server -> backup server addr ( ' ' if none )

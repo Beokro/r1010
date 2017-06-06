@@ -35,7 +35,7 @@ class BackupThread extends Thread {
             toSave = null;
             oos.writeObject(temp);
 
-            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
+            String timeStamp = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(Calendar.getInstance().getTime());
             RemoteBloomFilterImpl.log.info(timeStamp + " Save Done");
 
             } catch (Exception ex) {
@@ -67,7 +67,6 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
     public static final String address = "./remoteBloomFilter.backup";
     BloomFilter<int[][]> bloomFilter; 
     BloomFilter<int[][]> backup;
-    private static transient BackupThread backupThread = null;
     private int currentSize;
     private long CAP;
     private double fpp;
@@ -125,6 +124,39 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
         return result;
     }
 
+    private void save(String address) {
+        FileOutputStream fout = null;
+        ObjectOutputStream oos = null;
+        try {
+            fout = new FileOutputStream(address);
+            oos = new ObjectOutputStream(fout);
+            oos.writeObject(this);
+
+            String timeStamp = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(Calendar.getInstance().getTime());
+            RemoteBloomFilterImpl.log.info(timeStamp + " Save Done");
+
+            } catch (Exception ex) {
+
+                ex.printStackTrace();
+
+            } finally {
+            if (fout != null) {
+                try {
+                        fout.close();
+                } catch (IOException e) {
+                        e.printStackTrace();
+                }
+            }
+            if (oos != null) {
+                try {
+                        oos.close();
+                } catch (IOException e) {
+                        e.printStackTrace();
+                }
+            }
+        }
+    }
+    
     @Override
     public synchronized void refresh(int currentSize) throws RemoteException{
         if(this.currentSize >= currentSize) {
@@ -132,7 +164,9 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
         }
         this.currentSize = currentSize;
         bloomFilter = BloomFilter.create(graphFunnel, CAP, fpp);
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
+        elements = 0;
+        backup = null;
+        String timeStamp = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(Calendar.getInstance().getTime());
         log.info(timeStamp + " Refresh");
     }
 
@@ -143,15 +177,7 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
 
     @Override
     public synchronized void addHistory(int[][] toAdd) throws RemoteException {
-        if((elements % (CAP / 100000) == 0 && elements != 0) || elements >= CAP) {
-            try {
-                if(backupThread != null) {
-                    backupThread.join();
-                }
-            } catch (Exception ex) {
-            
-            }
-
+        if((elements % 2000 == 0 && elements != 0) || elements >= CAP) {
             if(elements >= CAP) {
 
                 // move history in memory to backup
@@ -160,11 +186,10 @@ public class RemoteBloomFilterImpl implements RemoteBloomFilter, Serializable {
                 bloomFilter = BloomFilter.create(graphFunnel, CAP, fpp);
                 elements = 0;
             }
-            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(Calendar.getInstance().getTime());
+            String timeStamp = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss").format(Calendar.getInstance().getTime());
             log.info(timeStamp + " Start Backup");
-            backupThread = new BackupThread(this, address);
-            backupThread.start();
-
+            save(address);
+            log.info(timeStamp + " Backup Done");
         }
         
         boolean result = bloomFilter.put(toAdd);

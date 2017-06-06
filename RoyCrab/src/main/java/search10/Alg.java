@@ -157,6 +157,7 @@ public class Alg {
     static Set<ChangeAndResult> bestOptions;
     double globalBetaBase = 10;
     double globalGamma = 0.006;
+    static int NUM_ISO = 10;
     
     static RemoteBloomFilter history;
     static ConcurrentMap<Edge, AtomicLong> edgeToClique;
@@ -200,18 +201,19 @@ public class Alg {
         return notAccept(globalBetaBase, globalGamma, cliques, min, min);
     }
     
-    private boolean useServer(int currentSize, long lastTime, long thisTime) {
-        if(currentSize < client.getCurrentSize()) { // move on to next step
+    private boolean useServer(int currentSize, int serverCurrentSize,
+                                                long lastTime, long thisTime) {
+        if(currentSize < serverCurrentSize) { // move on to next step
             return true;
         }
         if(thisTime == 0) { // someone has got 0
             return true;
         }
-        if(thisTime < lastTime) { // server not stuck and is not 0
-            if(current.get() > thisTime) { // and ours is worse than server's
-                return true;
-            }
+        if(thisTime < lastTime || current.get() < lastTime) {
+            return true; // server not stuck or we have a better answer
         }
+        // don't need to communicate with server only when server is stuck
+        // and we don't have a better answer
         return false;
     }
     
@@ -352,15 +354,16 @@ public class Alg {
             }
             addHistory();
             System.out.println("client's clique size: " + current.get());
-            client.updateFromAlg(currentSize, current.get(),
-                                    graph2d, (ConcurrentHashMap)edgeToClique);
-            thisTime = client.getCliqueSize();
+            long[] sizeAndCliques = client.getServerCli();
+            thisTime = sizeAndCliques[1];
             
-            if(useServer(currentSize, lastTime, thisTime)) {
-                return;
+            if(useServer(currentSize, (int)sizeAndCliques[0], lastTime, thisTime)) {
+                break;
             }
             lastTime = thisTime;
         }
+        client.updateFromAlg(currentSize, current.get(),
+                                    graph2d, (ConcurrentHashMap)edgeToClique);
     }
     
     Edge flip(Edge input) {
@@ -436,6 +439,16 @@ public class Alg {
         current.set(current.get() + newCount - oldCount);
     }
 
+    static void recordEdges(List<Integer> nodes, Map<Edge, Long> edgeToClique) {
+        for(int i = 0; i < nodes.size(); i++) {
+            for(int j = i + 1; j < nodes.size(); j++) {
+                Edge edge = new Edge(nodes.get(i), nodes.get(j));
+                edgeToClique.putIfAbsent(edge, new Long(0));
+                edgeToClique.put(edge, edgeToClique.get(edge) + 1);
+            }
+        }
+    }
+    
     static void recordEdges(int node1, String node2, int[] indexes,
                         List<String> neighbors, Map<Edge, Long> edgeToClique) {
         List<Integer> nodes = new ArrayList<Integer>();
@@ -477,11 +490,32 @@ public class Alg {
     }
     
     private void addHistory() {
-        try{
+        try {
             history.addHistory(graph2d);
         } catch(RemoteException e) {
             e.printStackTrace();
         }
+        /*
+        Random rand = new Random(System.currentTimeMillis());
+        List<Integer> nodes = new ArrayList<>();
+        for(int i = 0; i < currentSize; i++) {
+            nodes.add(i);
+        }
+        for(int i = 0; i < NUM_ISO; i++) {
+            Collections.shuffle(nodes, rand);
+            int[][] graph = new int[currentSize][];
+            for(int j = 0; j < currentSize; j++) {
+                graph[j] = new int[currentSize];
+                for(int k = 0; k < currentSize; k++) {
+                    graph[j][k] = graph2d[nodes.get(j)][nodes.get(k)];
+                }
+            }
+            try{
+                history.addHistory(graph);
+            } catch(RemoteException e) {
+                e.printStackTrace();
+            }
+        }*/
     }
     /*
     static synchronized UUID nextCliqueId() {
@@ -684,7 +718,6 @@ public class Alg {
             }
             excalibur = new Alg(serverIp, bloomFilterIp);
             excalibur.start();
-            
         }
     }
 }
